@@ -42,7 +42,7 @@ class TestFordBPLimitsCANFD(BPFordTestCase):
         self.assertEqual(expected, self._probe(desired, last_can))
 
   def test_curvature_rate_lookup_boundaries(self):
-    """Per-frame delta from the {5,16,25} m/s table (bp_curvature_rate_lookup_check), both
+    """Per-frame delta from the {5,16,25} m/s table (ford_bp_curvature_rate_lookup_check), both
     directions, both signs, exact boundary: the speed fudge and the delta arithmetic."""
     for speed in SPEEDS:
       self.set_meas(0, speed)
@@ -57,7 +57,7 @@ class TestFordBPLimitsCANFD(BPFordTestCase):
     """Above 10 m/s the command must stay within max_curvature_error of measured; when the last
     command is already outside the band it must move back toward it by at least the relaxed
     delta, and may not move further away. Below 10 m/s the band is off (the relaxed branches of
-    bp_curvature_rate_lookup_check). Seen in the car: a 4-frame block at 26 mph with the driver
+    ford_bp_curvature_rate_lookup_check). Seen in the car: a 4-frame block at 26 mph with the driver
     steering harder than the command, sitting exactly on this window's edge (#12)."""
     # measured both signs, and last commands on both sides of zero, so both relaxed branches run
     # with last commands of either sign. The C picks the up or down table by that sign, and the
@@ -252,7 +252,7 @@ class TestFordBPLimitsCANFD(BPFordTestCase):
         self.assertEqual(baseline, self._walk(self.lat(enabled, 0, 0, 0, 0)))
 
   def test_init_resets_bp_state(self):
-    """ford_init clears the BP path_angle / path_offset last values and the angle-mode flag, the
+    """ford_bp_init (from ford_init) clears the BP path_angle / path_offset last values and the angle-mode flag, the
     way set_safety_hooks clears upstream's lateral state: after a re-init the first frame is
     checked against 0, not against the previous session. (The curvature_rate last value is reset
     too, but its ROC can never fire, so that is not observable; see #22.)"""
@@ -279,7 +279,7 @@ class TestFordBPLimitsCANFD(BPFordTestCase):
         self.set_prev_curvature_can(self.TINY_CURVATURE_CAN)
         if stale == "angle_mode":
           # the flag is cleared, so a curvature-0 frame is not checked against the shadow value
-          # (ford_init leaves the raw shadow value alone; the flag gates its use)
+          # (ford_bp_init leaves the raw shadow value alone; the flag gates its use)
           self.assertTrue(self.tx(self.lat(True, 0, SMALL_ANGLE, 0, 0)))
         else:
           # one full ROC step below 0: within the ROC only if the last value is exactly 0 (from the
