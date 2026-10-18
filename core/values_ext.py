@@ -69,7 +69,7 @@ def init_ford_safety_param_sp(CP: structs.CarParams, CP_SP: structs.CarParamsSP,
   # Steering-angle curvature measurement (bad-yaw-sensor workaround): sets the
   # STEER_ANGLE_CURVATURE flag + the platform geometry-table index on CP_SP.safetyParam,
   # which reaches the safety firmware as current_safety_param_sp (USB 0xdf); the control
-  # side mirrors the same flag (lateral_curv_ext.get_current_curvature). Platforms without
+  # side mirrors the same flag (carcontroller_ext.LateralInputs.get_current_curvature). Platforms without
   # a geometry row silently keep stock yaw behavior -- the toggle no-ops rather than
   # half-configuring.
   if CP.brand == 'ford':
@@ -94,7 +94,7 @@ def init_ford_safety_param_sp(CP: structs.CarParams, CP_SP: structs.CarParamsSP,
 
 # Pinion geometry wheelbase (m) where BluePilot deliberately differs from CarSpecs. Used by both the
 # C table (ford_pinion_geometry in bluepilot_lateral/safety/ford.h) and the Python pinion path
-# (lateral_curv_ext.pinion_vehicle_model), so the two layers convert pinion angle the same way.
+# (carcontroller_ext.pinion_vehicle_model), so the two layers convert pinion angle the same way.
 # FORD_F_150_MK14: the trucks with lane centering come in 3.68 and 3.99 m wheelbases and nothing on
 # the car tells them apart; the average keeps either within about 4% (#21).
 FORD_PINION_WHEELBASE = {
@@ -151,3 +151,7 @@ BP_LATERAL_PARAMS = (
   "custom_path_offset_ang",
   "lane_centering_strength_ang",
 )
+
+# Lane change smoothing, both modes: speed breakpoints (m/s) and the low-speed factor
+LANE_CHANGE_FACTOR_BP = (4.4, 40.23)
+LANE_CHANGE_FACTOR_LOW = 0.95
