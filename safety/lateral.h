@@ -77,6 +77,9 @@ static inline bool ford_bp_curvature_rate_lookup_check(int desired_curvature, co
 // ford_bp_curvature_rate_lookup_check in place of its ISO lateral accel and jerk checks. Ford has no
 // steer power signal (max_steer_power 0) and resets to zero on a violation
 // (inactive_curvature_is_zero), so only those sides of upstream's branches are kept.
+// The other difference from upstream: curvature 0 (no curvature command: angle mode, curvature
+// mode's reset frame) skips the cap and rate-table checks, keeping the message-rate check and the
+// gates. Keep it when re-syncing against upstream (#60).
 static inline bool ford_bp_curvature_cmd_checks(int desired_curvature, bool steer_control_enabled,
                                                 const FordBpCurvatureLimits *limits) {
   bool violation = false;
@@ -84,11 +87,17 @@ static inline bool ford_bp_curvature_cmd_checks(int desired_curvature, bool stee
   speed_mismatch_check((float)vehicle_speed_2.values[0] / VEHICLE_SPEED_FACTOR);
 
   if ((controls_allowed || controls_allowed_lateral) && steer_control_enabled) {
-    // *** absolute curvature cap ***
-    violation |= safety_max_limit_check(desired_curvature, limits->base.max_curvature, -limits->base.max_curvature);
+    // BluePilot: curvature 0 is the no-curvature-command sentinel (angle mode steers with path_angle
+    // and holds curvature at 0; curvature mode's reset frame sends 0), so the value checks don't
+    // apply to it: the error band would trip as the car turns while the command stays at 0. The
+    // message-rate check and the gates below still run.
+    if (desired_curvature != 0) {
+      // *** absolute curvature cap ***
+      violation |= safety_max_limit_check(desired_curvature, limits->base.max_curvature, -limits->base.max_curvature);
 
-    // *** measured-table rate limits, error band and (CAN FD) lateral accel cap ***
-    violation |= ford_bp_curvature_rate_lookup_check(desired_curvature, limits);
+      // *** measured-table rate limits, error band and (CAN FD) lateral accel cap ***
+      violation |= ford_bp_curvature_rate_lookup_check(desired_curvature, limits);
+    }
 
     // *** real time rate limit check ***
     violation |= rt_curvature_rate_limit_check(limits->base);
