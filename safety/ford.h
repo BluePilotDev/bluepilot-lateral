@@ -335,7 +335,7 @@ static inline void ford_bp_lka_tx(const CANPacket_t *msg) {
 // same source when this is enabled (carcontroller_ext.LateralInputs.get_current_curvature), so the layers always
 // agree. ford_rx_hook skips its yaw block while this source is on.
 static inline void ford_bp_rx_hook(const CANPacket_t *msg) {
-  if ((msg->addr == FORD_SteeringPinion_Data) && ford_bp_pinion_curvature) {
+  if (msg_matches(msg, FORD_SteeringPinion_Data, FORD_MAIN_BUS) && ford_bp_pinion_curvature) {
     // Signal: StePinComp_An_Est, 22|15@0+ (0.1,-1600) deg
     int angle_raw = ((msg->data[2] & 0x7FU) << 8) | msg->data[3];
     float pinion_angle_deg = ((float)angle_raw * 0.1f) - 1600.0f;

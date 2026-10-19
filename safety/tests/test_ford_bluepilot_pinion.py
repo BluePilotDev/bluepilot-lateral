@@ -62,12 +62,12 @@ class BPPinionMixin:
     # 0.1 deg DBC quantization in curvature CAN units at this speed, +2 for float rounding
     return int(np.radians(0.1) * self._curvature_factor(speed) / self.PINION_STEER_RATIO * CURVATURE_TO_CAN) + 2
 
-  def _pinion_msg(self, curvature: float, speed: float, quality_flag=True):
+  def _pinion_msg(self, curvature: float, speed: float, quality_flag=True, bus=0):
     values = {"StePinComp_An_Est": self._curvature_to_pinion_angle_deg(curvature, speed),
               "StePinCompAnEst_D_Qf": 3 if quality_flag else 0,
               "StePinAn_No_Cnt": self.cnt_pinion % 16}
     self.__class__.cnt_pinion += 1
-    return self.packer.make_can_msg_safety("SteeringPinion_Data", 0, values)
+    return self.packer.make_can_msg_safety("SteeringPinion_Data", bus, values)
 
   def _reset_curvature_measurement(self, curvature, speed):
     # 14 frames, not 6: after a counter discontinuity (rejected bad-QF frames still advance the
@@ -126,6 +126,15 @@ class BPPinionMixin:
     self.assertGreater(before, 0)
     for _ in range(6):
       self.assertFalse(self._rx(self._pinion_msg(0, speed, quality_flag=False)))
+    self.assertEqual(self.safety.get_curvature_meas_max(), before)
+
+  def test_pinion_other_bus_ignored(self):
+    # only the main bus pinion frame feeds the measurement (its rx check entry is bus 0; ford_bp_rx_hook also matches the bus)
+    speed = CURVATURE_ERROR_MIN_SPEED + 5
+    self._reset_curvature_measurement(0.005, speed)
+    before = self.safety.get_curvature_meas_max()
+    for _ in range(6):
+      self._rx(self._pinion_msg(-0.005, speed, bus=2))
     self.assertEqual(self.safety.get_curvature_meas_max(), before)
 
   def test_pinion_sign_convention(self):
