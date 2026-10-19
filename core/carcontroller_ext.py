@@ -14,7 +14,7 @@ continues from the last command, as before.
 import math
 from types import SimpleNamespace
 
-from opendbc.car import scale_rot_inertia, scale_tire_stiffness
+from opendbc.car import scale_rot_inertia_per_mass, scale_tire_stiffness_per_mass
 from opendbc.car.ford.values import CarControllerParams, FordFlags
 from opendbc.car.vehicle_model import VehicleModel
 from opendbc.bluepilot_lateral.can import fordcan_ext
@@ -35,11 +35,11 @@ def pinion_vehicle_model(CP):
   if wheelbase is None:
     return VehicleModel(CP)
   center_to_front = wheelbase * CP.centerToFront / CP.wheelbase
-  front, rear = scale_tire_stiffness(CP.mass, wheelbase, center_to_front, CP.tireStiffnessFactor)
+  front, rear = scale_tire_stiffness_per_mass(wheelbase, center_to_front, CP.tireStiffnessFactor)
   return VehicleModel(SimpleNamespace(
-    mass=CP.mass, rotationalInertia=scale_rot_inertia(CP.mass, wheelbase), wheelbase=wheelbase,
-    centerToFront=center_to_front, steerRatioRear=CP.steerRatioRear, steerRatio=CP.steerRatio,
-    tireStiffnessFront=front, tireStiffnessRear=rear))
+    rotationalInertiaPerMass=scale_rot_inertia_per_mass(wheelbase), wheelbase=wheelbase,
+    centerToFront=center_to_front, steerRatio=CP.steerRatio,
+    tireStiffnessFrontPerMass=front, tireStiffnessRearPerMass=rear))
 
 
 class LateralInputs:

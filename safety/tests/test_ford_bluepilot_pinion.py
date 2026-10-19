@@ -13,7 +13,7 @@ import unittest
 
 import numpy as np
 
-from opendbc.car import scale_tire_stiffness
+from opendbc.car import scale_tire_stiffness_per_mass
 from opendbc.car.ford.values import CAR
 from opendbc.car.structs import CarParams
 from opendbc.car.vehicle_model import VehicleModel, calc_slip_factor
@@ -196,12 +196,11 @@ class TestFordBPPinionGeometryTable(unittest.TestCase):
     specs = car.config.specs
     wheelbase = FORD_PINION_WHEELBASE.get(car, specs.wheelbase)
     CP = CarParams()
-    CP.mass = specs.mass
     CP.wheelbase = wheelbase
     CP.steerRatio = specs.steerRatio
     CP.centerToFront = wheelbase * specs.centerToFrontRatio
     CP.tireStiffnessFactor = specs.tireStiffnessFactor
-    CP.tireStiffnessFront, CP.tireStiffnessRear = scale_tire_stiffness(CP.mass, CP.wheelbase, CP.centerToFront, CP.tireStiffnessFactor)
+    CP.tireStiffnessFrontPerMass, CP.tireStiffnessRearPerMass = scale_tire_stiffness_per_mass(CP.wheelbase, CP.centerToFront, CP.tireStiffnessFactor)
     slip_factor = calc_slip_factor(VehicleModel(CP))
 
     slip, sr, wb = GEOMETRY[idx]
