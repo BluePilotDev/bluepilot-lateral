@@ -33,10 +33,6 @@
 // harness rewrites arithmetic in array sizes into runtime expressions, which cannot compile.
 #define FORD_PINION_GEOMETRY_ROWS 13U
 
-// shadow_curvature is packed at scale 1e-6 1/m; convert to the CAN units steer_angle_cmd_checks
-// expects, matching FORD_BP_STEERING_LIMITS/FORD_CANFD_STEERING_LIMITS.curvature_to_can (50000, i.e.
-// physical scale 2e-5): raw * 1e-6 * 50000 = raw * 0.05.
-
 // Control signal limits -- curvature magnitude must match MAX_CURVATURE; rate tables must match
 // opendbc/sunnypilot/car/ford/values_ext.py BP_ANGLE_LIMITS.
 #define FORD_CURVATURE_MIN -0.02f
@@ -65,10 +61,17 @@ extern const AngleSteeringParams *ford_bp_pinion_params;
 extern const AngleSteeringParams ford_pinion_geometry[FORD_PINION_GEOMETRY_ROWS];
 
 // BluePilot: angle_mode_engaged + shadow_curvature, read out of Lane_Assist_Data1's unused
-// bits by ford_bp_lka_tx (no separate CAN message, no RX -- see fordcan_ext.py's
-// create_lka_msg for the wire layout).
+// bits by ford_bp_lka_tx (no separate CAN message, no RX). The layout is in
+// opendbc/bluepilot_lateral/can/LANE_ASSIST_DATA1.md; fordcan_ext.py packs it with the same values
+// (tests/test_lane_assist_data1.py).
+#define FORD_BP_LKA_ANGLE_MODE_BYTE 4U
+#define FORD_BP_LKA_ANGLE_MODE_MASK 0x1U
+#define FORD_BP_LKA_SHADOW_MSB_BYTE 5U  // shadow curvature: int16, big-endian, bytes 5-6
+#define FORD_BP_LKA_SHADOW_LSB_BYTE 6U
+// shadow curvature raw units (1e-6 1/m) to curvature CAN units (2e-5 1/m)
+#define FORD_BP_LKA_SHADOW_RAW_TO_CAN 0.05f
 extern bool ford_bp_angle_mode_engaged;
-extern int16_t ford_bp_shadow_curvature_raw;  // wire units, scale 1e-6 1/m (see fordcan_ext.py)
+extern int16_t ford_bp_shadow_curvature_raw;  // wire units, scale 1e-6 1/m (LANE_ASSIST_DATA1.md)
 
 // last commanded values for the path_angle / path_offset rate-of-change checks
 extern int desired_path_angle_last;
