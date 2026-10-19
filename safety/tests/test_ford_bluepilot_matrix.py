@@ -19,6 +19,7 @@ import unittest
 import opendbc.safety.tests.common as common
 from opendbc.bluepilot_lateral.core.values_ext import FordSafetyFlagsSP
 from opendbc.safety.tests import test_ford
+from opendbc.safety.tests.libsafety import libsafety_py
 from opendbc.safety.tests.ford_bluepilot_common import (
   BPFordLateralModel, CURVATURE_TO_CAN, MAX_CURVATURE_ERROR_CAN, CURVATURE_SIGNAL_MAX_CAN,
 )
@@ -38,7 +39,7 @@ class BPLateralMatrixMixin:
   MAX_CURVATURE_ERROR_CAN_BP = MAX_CURVATURE_ERROR_CAN  # FORD_LIMITS(_, 100); the pinion classes use MAX_CURVATURE_ERROR_CAN_PINION
 
   def setUp(self):
-    self.safety = test_ford.libsafety_py.libsafety
+    self.safety = libsafety_py.libsafety
     self.safety.set_current_safety_param_sp(self.PARAM_SP)
     super().setUp()  # stock setUp: packer, set_safety_hooks, init_tests
     self.model = BPFordLateralModel(self.CANFD, self.MAX_CURVATURE_ERROR_CAN_BP)

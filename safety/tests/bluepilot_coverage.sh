@@ -9,8 +9,8 @@ cd $DIR
 source ../../../setup.sh
 
 # reset coverage data, then run the safety tests (the BluePilot ones live here too)
-rm -f ./libsafety/*.gcda
-python -m unittest discover -s .
+rm -f ./libsafety/*.gcda ./libsafety/*.gcno
+SAFETY_COVERAGE=1 python -m unittest discover -s .
 
 if [ "$(uname)" = "Darwin" ]; then
   GCOV_EXEC="llvm-cov gcov"
