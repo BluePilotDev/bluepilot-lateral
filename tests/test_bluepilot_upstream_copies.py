@@ -17,7 +17,7 @@ PINNED = {
   ("opendbc/safety/lateral.h", "steer_curvature_cmd_checks"): "9b13985a8d01e88b",  # ford_bp_curvature_cmd_checks, bluepilot_lateral/safety/lateral.h
   ("opendbc/car/ford/fordcan.py", "create_lka_msg"): "c7e38e4f0215dcf4",           # bluepilot_lateral/can/fordcan_ext.py
   ("opendbc/car/ford/fordcan.py", "create_lat_ctl_msg"): "f00a87f31389cb91",       # bluepilot_lateral/can/fordcan_ext.py
-  ("opendbc/car/ford/fordcan.py", "create_lat_ctl2_msg"): "4147e71aa7c6c51f",      # bluepilot_lateral/can/fordcan_ext.py
+  ("opendbc/car/ford/fordcan.py", "create_lat_ctl2_msg"): "1653ca5622eccc77",      # bluepilot_lateral/can/fordcan_ext.py
 }
 
 

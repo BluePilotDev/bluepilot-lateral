@@ -9,7 +9,7 @@ Trimmed for the lateral proof-of-concept: the longitudinal, HUD and ICBM builder
 BluePilot's fordcan_ext.py are out of scope here.
 """
 
-from opendbc.car.ford.fordcan import CanBus, calculate_lat_ctl2_checksum
+from opendbc.car.ford.fordcan import CanBus
 
 
 # BluePilot: the Lane_Assist_Data1 side channel, see LANE_ASSIST_DATA1.md. ford_declarations.h has the
@@ -103,11 +103,6 @@ def create_lat_ctl2_msg(packer, CAN: CanBus, mode: int, ramp_type: int, precisio
     "LatCtlCrv_NoRate2_Actl": curvature_rate,   # [-0.001024|0.001023] 1/meter^2
     "HandsOffCnfm_B_Rq": 0,                     # 0=Inactive, 1=Active [0|1]
     "LatCtlPath_No_Cnt": counter,               # [0|15]
-    "LatCtlPath_No_Cs": 0,                      # [0|255]
   }
-
-  # Calculate checksum (reuse stock function)
-  dat = packer.make_can_msg("LateralMotionControl2", 0, values)[1]
-  values["LatCtlPath_No_Cs"] = calculate_lat_ctl2_checksum(mode, counter, dat)
 
   return packer.make_can_msg("LateralMotionControl2", CAN.main, values)
