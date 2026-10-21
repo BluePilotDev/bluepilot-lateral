@@ -10,6 +10,8 @@ LIB=$(pwd)
 WORK=$(mktemp -d)
 git config --global user.name "ford-op-sync[bot]"
 git config --global user.email "ford-op-sync[bot]@users.noreply.github.com"
+# the clones have no submodules checked out: a fetch that recursed into a moved gitlink would fail
+git config --global fetch.recurseSubmodules false
 clone() {  # <repo> <branch> <dir>: history and trees only, no checkout, index at HEAD
   GIT_LFS_SKIP_SMUDGE=1 git -c filter.lfs.process= -c filter.lfs.required=false clone -q --filter=blob:none \
     --no-checkout -b "$2" "https://x-access-token:${GH_TOKEN}@github.com/ford-op/$1.git" "$3"
