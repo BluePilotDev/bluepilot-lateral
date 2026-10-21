@@ -40,7 +40,7 @@
 #define FORD_PATH_OFFSET_MIN -1.0f
 #define FORD_PATH_OFFSET_MAX 1.0f
 #define FORD_PATH_ANGLE_MIN -0.25f
-#define FORD_PATH_ANGLE_MAX 0.25f
+#define FORD_PATH_ANGLE_MAX 0.3f
 // BluePilot: full DBC signal range for path_angle (LatCtlPath_An, 0.0005 scale). Used as the
 // value limit in ANGLE mode, where path_angle is the steering actuator (see ford_lmc_checks).
 // Matches lateral_angle_ext.py FORD_DBC_PATH_ANGLE_MIN/MAX. In curvature mode the tight ±0.25
