@@ -102,7 +102,7 @@ class LaneCenterTrim:
     transition (e.g. a merge lane too wide to be trusted, then narrowing back into range) eases
     into its new target instead of snapping.
     """
-    if not enabled or not lat_active or lane_change or model is None:
+    if not enabled or not lat_active or model is None:
       self.reset()
       return kappa_cmd
 
