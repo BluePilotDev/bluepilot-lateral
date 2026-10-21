@@ -13,12 +13,14 @@ A host mounts this repo as a git submodule at `opendbc/bluepilot_lateral/` insid
 | file | what the hook does |
 |---|---|
 | `opendbc/car/ford/carcontroller.py` | Builds one `BluePilotLateral(CP, CP_SP, packer, CAN)`, the sunnypilot adapter (`hosts/sunnypilot/lateral.py`, below). Each frame `bp.update(CC_SP, frame)` says whether BluePilot lateral is active; if it is, `bp.step_lateral` sends the steering message at `STEER_STEP` (and returns the curvature to pass back next time) and `bp.step_lka` sends Lane_Assist_Data1 at `LKA_STEP`. Otherwise the stock path runs. |
-| `opendbc/car/structs.py` | Imports `LateralInputs` from `host_types.py` and adds `CarControlSP.lateralInputs`. |
-| `opendbc/sunnypilot/car/interfaces.py` | Calls `init_ford_safety_param_sp(CP, CP_SP, params_dict)` (`hosts/sunnypilot/safety_param.py`) at car init: the startup safety bits below. |
+| `opendbc/car/structs.py` | Imports `LateralInputs` from `host_types.py` and adds `CarControlSP.lateralInputs` and `CarParamsSP.lateralInputsRequired`. |
+| `opendbc/sunnypilot/car/interfaces.py` | Calls `init_ford_safety_param_sp(CP, CP_SP, params_dict)` (`hosts/sunnypilot/safety_param.py`) at car init: the startup safety bits below, and `lateralInputsRequired` for every Ford. |
 | `opendbc/safety/modes/ford.h` | Includes `safety/ford.h` and makes one call per hook site: counter and quality checks for the pinion message, the yaw measurement skipped while the pinion source is on, `ford_bp_rx_hook` (pinion measurement), `ford_bp_lka_tx` (angle-mode state from Lane_Assist_Data1), `ford_bp_lmc_tx` in place of the stock steering check when `BP_LATERAL` is set (the stock check runs unchanged when it isn't), and the pinion RX check list from `ford_bp_init`. |
 | `opendbc/safety/tests/test_bluepilot_lateral.py` | New: hands the library's `safety/tests/` to upstream's test discovery, so upstream's `test.sh` and `mutation.py` run the BluePilot safety tests. |
 
 ## Every frame: inputs
+
+A host fills these and the settings below for a car whose `CarParamsSP.lateralInputsRequired` is set: every Ford, BluePilot lateral on or off (`init_ford_safety_param_sp`).
 
 `CarControlSP.lateralInputs` (`host_types.LateralInputs`):
 
