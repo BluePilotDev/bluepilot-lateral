@@ -16,6 +16,10 @@ on:
 permissions:
   contents: write
 
+concurrency:  # one release at a time, in order
+  group: release-bumps
+  cancel-in-progress: false
+
 jobs:
   release-branch:
     runs-on: ubuntu-24.04

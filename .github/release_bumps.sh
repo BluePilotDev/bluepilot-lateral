@@ -15,21 +15,51 @@ clone() {  # <repo> <branch> <dir>: history and trees only, no checkout, index a
     --no-checkout -b "$2" "https://x-access-token:${GH_TOKEN}@github.com/ford-op/$1.git" "$3"
   git -C "$3" read-tree HEAD
 }
-bump() {  # <dir> <path> <commit> <branch> <message>: commit a new gitlink and push it as <branch>
+bump() {  # <dir> <path> <commit> <branch> <message>: commit a new gitlink and push it as <branch>, the
+  # job's own branch (forced, so a rerun after a failure replaces its earlier attempt)
   git -C "$1" update-index --cacheinfo "160000,$3,$2"
   git -C "$1" -c filter.lfs.process= -c filter.lfs.required=false commit -q -m "$5"
-  git -C "$1" push -q origin "HEAD:refs/heads/$4"
+  git -C "$1" push -q --force origin "HEAD:refs/heads/$4"
+}
+open_pr() {  # <repo> <base> <branch> <title> <body>: the branch's open PR, or a new one
+  local url
+  url=$(gh pr list -R "ford-op/$1" -H "$3" --state open --json url -q '.[0].url')
+  if [ -n "$url" ]; then gh pr edit "$url" --title "$4" --body "$5" >/dev/null; echo "$url"
+  else gh pr create -R "ford-op/$1" -B "$2" -H "$3" --title "$4" --body "$5"; fi
+}
+# bg-clean's required checks (its branch protection; the App can't read protection, so they're listed)
+REQUIRED=("./test.sh (Linux)" "safety" "bluepilot-safety" "bluepilot-hooks")
+wait_required() {  # <pr>: until every required check has reported and passed; fails on the first failure
+  local out n state
+  for _ in $(seq 150); do
+    out=$(gh pr checks "$1" --required --json name,bucket 2>/dev/null || true)
+    if jq -e 'any(.[]; .bucket == "fail" or .bucket == "cancel")' <<<"${out:-[]}" >/dev/null; then
+      jq -r '.[] | select(.bucket == "fail" or .bucket == "cancel") | "failed: \(.name)"' <<<"$out"; return 1
+    fi
+    n=0
+    for name in "${REQUIRED[@]}"; do
+      state=$(jq -r --arg n "$name" '.[] | select(.name == $n) | .bucket' <<<"${out:-[]}")
+      [ "$state" = pass ] && n=$((n + 1))
+    done
+    [ "$n" = "${#REQUIRED[@]}" ] && return 0
+    sleep 20
+  done
+  echo "required checks didn't finish in 50 minutes"; return 1
 }
 
 # 1. bg-opendbc: the library pointer, merged on green
 clone bg-opendbc bg-clean "$WORK/bg"
-if [ "$(git -C "$WORK/bg" rev-parse HEAD:opendbc/bluepilot_lateral)" = "$SHA" ]; then
+PIN=$(git -C "$WORK/bg" rev-parse HEAD:opendbc/bluepilot_lateral)
+if ! git -C "$LIB" merge-base --is-ancestor "$PIN" "$SHA"; then
+  echo "$TAG (${SHA:0:8}) isn't ahead of bg-opendbc's pin ${PIN:0:8}: nothing to do"; exit 1
+fi
+if [ "$PIN" = "$SHA" ]; then
   echo "bg-opendbc already pins $TAG"
   BG=$(git -C "$WORK/bg" rev-parse HEAD)
 else
   BRANCH="bump/library-$TAG"
   bump "$WORK/bg" opendbc/bluepilot_lateral "$SHA" "$BRANCH" "bluepilot_lateral: bump to $TAG"
-  PR=$(gh pr create -R ford-op/bg-opendbc -B bg-clean -H "$BRANCH" --title "bluepilot_lateral: bump to $TAG" --body \
+  PR=$(open_pr bg-opendbc bg-clean "$BRANCH" "bluepilot_lateral: bump to $TAG" \
 "The library pointer moves to bluepilot-lateral [$TAG](https://github.com/ford-op/bluepilot-lateral/releases/tag/$TAG) (${SHA:0:8}). Opened by the library's release job, which merges it once the required checks pass (ford-op/bg-opendbc#97).
 
 ## Validation
@@ -38,14 +68,7 @@ else
 - [ ] CI \`bluepilot-safety\`
 - [ ] CI \`bluepilot-hooks\`")
   echo "bg-opendbc: $PR"
-  # the checks take a moment to register; then wait for the required ones
-  for _ in $(seq 60); do
-    rc=0; gh pr checks "$PR" --required >/dev/null 2>&1 || rc=$?
-    [ "$rc" = 0 ] || [ "$rc" = 8 ] && break
-    sleep 10
-  done
-  gh pr checks "$PR" --required --watch --fail-fast --interval 30
-  gh pr checks "$PR" --required  # exits non-zero unless every required check passed
+  wait_required "$PR"
   gh pr view "$PR" --json body -q .body | sed 's/^- \[ \] CI/- [x] CI/' > "$WORK/body.md"
   gh pr edit "$PR" --body-file "$WORK/body.md"
   gh pr merge "$PR" --squash --delete-branch
@@ -63,8 +86,9 @@ changed() {  # what moved: bg-opendbc outside the library, then the library itse
   git -C "$LIB" diff --name-only "$OLDLIB" "$SHA" | sed 's|^|opendbc/bluepilot_lateral/|'
 }
 FILES=$(changed)
-FW=$(grep -E '\.(h|c)$' <<<"$FILES" || true)
-LAT=$(grep -E '^opendbc/bluepilot_lateral/.*\.py$|^opendbc/car/ford/.*\.py$|^opendbc/car/structs\.py$|^opendbc/sunnypilot/car/interfaces\.py$' <<<"$FILES" | grep -v '/tests/' || true)
+NOTESTS=$(grep -v '/tests/' <<<"$FILES" || true)
+FW=$(grep -E '\.(h|c)$' <<<"$NOTESTS" || true)
+LAT=$(grep -E '^opendbc/(bluepilot_lateral|car/ford|sunnypilot/car/ford)/.*\.py$|^opendbc/car/(lateral|interfaces|structs)\.py$|^opendbc/sunnypilot/car/interfaces\.py$|^opendbc/dbc/ford' <<<"$NOTESTS" || true)
 # shellcheck disable=SC2016  # the backticks are Markdown, not expansions
 list() { if [ -n "$1" ]; then sed 's/^/  - `/; s/$/`/' <<<"$1"; else echo "  - none"; fi; }
 DRIVE=""
@@ -72,13 +96,12 @@ DRIVE=""
 - [ ] A drive (panda firmware or lateral Python changed)"
 BRANCH="opendbc/library-$TAG"
 bump "$WORK/sp" opendbc_repo "$BG" "$BRANCH" "opendbc_repo: bg-clean ${BG:0:8} (bluepilot-lateral $TAG)"
-gh pr create -R ford-op/bp-sunnypilot -B master-local-lateral -H "$BRANCH" \
-  --title "opendbc_repo: bluepilot-lateral $TAG" --body \
+open_pr bp-sunnypilot master-local-lateral "$BRANCH" "opendbc_repo: bluepilot-lateral $TAG" \
 "\`opendbc_repo\` moves to bg-opendbc \`bg-clean\` ${BG:0:8}, which has bluepilot-lateral [$TAG](https://github.com/ford-op/bluepilot-lateral/releases/tag/$TAG). Opened by the library's release job (ford-op/bg-opendbc#97); not merged automatically.
 
 - Panda firmware (\`.h\`/\`.c\`) changed:
 $(list "$FW")
-- Lateral Python changed (outside tests):
+- Lateral Python or Ford DBC changed (outside tests):
 $(list "$LAT")
 
 ## Validation
