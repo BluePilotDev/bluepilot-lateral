@@ -145,7 +145,7 @@ static inline bool ford_lmc_checks(int desired_curvature, int desired_curvature_
 
   // PathAngle rate limits
   static const AngleSteeringLimits FORD_PATH_ANGLE_LIMITS = {
-    .max_angle = 1100,
+    .max_angle = 1000,
     // 0.0005
     .angle_deg_to_can = 2000,        // 1 / (2e-5) rad to can
     // Mirror lateral_angle_ext.py _soft_roc: interp(v_ego, [9,10,15,25], [0.055,0.055,0.0425,0.009])
