@@ -67,5 +67,24 @@ class TestInitFordSafetyParamSp(unittest.TestCase):
     self.assertEqual(self._param_sp({"FordPrefSteerAngleCurvature": "1"}, brand="toyota"), 0)
 
 
+class TestLateralInputsRequired(unittest.TestCase):
+  """init_ford_safety_param_sp tells the host to fill CarControlSP.lateralInputs and the per-frame
+  settings for every Ford, whether BluePilot lateral is on or off, and for no other brand."""
+
+  def _required(self, params_dict, brand="ford"):
+    CP = structs.CarParams()
+    CP.brand, CP.carFingerprint = brand, CAR.FORD_F_150_MK14
+    CP_SP = structs.CarParamsSP()
+    init_ford_safety_param_sp(CP, CP_SP, params_dict)
+    return CP_SP.lateralInputsRequired
+
+  def test_every_ford(self):
+    self.assertTrue(self._required({}))
+    self.assertTrue(self._required({"disable_BP_lat_UI": "1"}))
+
+  def test_other_brands(self):
+    self.assertFalse(self._required({}, brand="toyota"))
+
+
 if __name__ == "__main__":
   unittest.main()

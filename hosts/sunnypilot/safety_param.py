@@ -8,5 +8,8 @@ from opendbc.bluepilot_lateral.core.values_ext import ford_safety_param
 
 def init_ford_safety_param_sp(CP: structs.CarParams, CP_SP: structs.CarParamsSP, params_dict: dict[str, str]) -> None:
   """Called from sunnypilot's setup_interfaces at car init. CP_SP.safetyParam reaches the panda as
-  current_safety_param_sp (USB 0xdf)."""
+  current_safety_param_sp (USB 0xdf); lateralInputsRequired tells the host to fill
+  CarControlSP.lateralInputs and the per-frame settings, for every Ford (BluePilot lateral on or off)."""
   CP_SP.safetyParam |= ford_safety_param(CP, params_dict)
+  if CP.brand == 'ford':
+    CP_SP.lateralInputsRequired = True
