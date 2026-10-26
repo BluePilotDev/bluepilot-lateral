@@ -62,7 +62,7 @@ else
   BRANCH="bump/library-$TAG"
   bump "$WORK/bg" opendbc/bluepilot_lateral "$SHA" "$BRANCH" "bluepilot_lateral: bump to $TAG"
   PR=$(open_pr bg-opendbc bg-clean "$BRANCH" "bluepilot_lateral: bump to $TAG" \
-"The library pointer moves to bluepilot-lateral [$TAG](https://github.com/ford-op/bluepilot-lateral/releases/tag/$TAG) (${SHA:0:8}). Opened by the library's release job, which merges it once the required checks pass (ford-op/bg-opendbc#97).
+"The library pointer moves to bluepilot-lateral [$TAG](https://github.com/BluePilotDev/bluepilot-lateral/releases/tag/$TAG) (${SHA:0:8}). Opened by the library's release job, which merges it once the required checks pass (ford-op/bg-opendbc#97).
 
 ## Validation
 - [ ] CI \`./test.sh (Linux)\`
@@ -99,7 +99,7 @@ DRIVE=""
 BRANCH="opendbc/library-$TAG"
 bump "$WORK/sp" opendbc_repo "$BG" "$BRANCH" "opendbc_repo: bg-clean ${BG:0:8} (bluepilot-lateral $TAG)"
 open_pr bp-sunnypilot master-local-lateral "$BRANCH" "opendbc_repo: bluepilot-lateral $TAG" \
-"\`opendbc_repo\` moves to bg-opendbc \`bg-clean\` ${BG:0:8}, which has bluepilot-lateral [$TAG](https://github.com/ford-op/bluepilot-lateral/releases/tag/$TAG). Opened by the library's release job (ford-op/bg-opendbc#97); not merged automatically.
+"\`opendbc_repo\` moves to bg-opendbc \`bg-clean\` ${BG:0:8}, which has bluepilot-lateral [$TAG](https://github.com/BluePilotDev/bluepilot-lateral/releases/tag/$TAG). Opened by the library's release job (ford-op/bg-opendbc#97); not merged automatically.
 
 - Panda firmware (\`.h\`/\`.c\`) changed:
 $(list "$FW")
