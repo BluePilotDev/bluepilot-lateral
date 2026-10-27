@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # BluePilot: print the hook patch, everything a sunnypilot/opendbc checkout needs besides the library
 # itself (HOSTS.md, #63): every file outside opendbc/bluepilot_lateral/ that differs from master, minus
-# bg-opendbc's own .github. Fails unless the changed files are exactly the hook list's non-.github
+# BluePilotDev/opendbc's own .github. Fails unless the changed files are exactly the hook list's non-.github
 # entries; the rest are new files (the safety test loader).
-# usage, in a bg-opendbc checkout: opendbc/bluepilot_lateral/tools/make_hook_patch.sh [base, default master] > hooks.patch
+# usage, in a BluePilotDev/opendbc checkout: opendbc/bluepilot_lateral/tools/make_hook_patch.sh [base, default master] > hooks.patch
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 BASE=${1:-master}

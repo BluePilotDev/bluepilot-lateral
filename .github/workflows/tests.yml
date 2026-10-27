@@ -1,4 +1,4 @@
-# The library on sunnypilot/opendbc with bg-opendbc's hook patch, through the checks bg-opendbc runs on
+# The library on sunnypilot/opendbc with BluePilotDev/opendbc's hook patch, through the checks it runs on
 # it (spec: ford-op/bg-opendbc#83). Required on main as `./test.sh`, `safety` and `bluepilot-safety`:
 # keep the job names, and keep them running on every PR (a required check that doesn't run blocks the PR).
 name: tests
@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       base:
-        description: sunnypilot/opendbc ref to test on (default the upstream commit bg-clean contains)
+        description: sunnypilot/opendbc ref to test on (default the upstream commit bp-opendbc contains)
         required: false
 
 permissions:
@@ -49,8 +49,8 @@ jobs:
         path: lib
     - uses: actions/checkout@v7
       with:
-        repository: ford-op/bg-opendbc
-        ref: bg-clean
+        repository: BluePilotDev/opendbc
+        ref: bp-opendbc
         path: bg
         fetch-depth: 0  # the hook patch is a diff against the merge base with master
     - name: Host tree (upstream, hook patch, library)
