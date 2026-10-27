@@ -1,6 +1,6 @@
 # Moves the `release` branch to each published release's commit (fast-forward only: a release that
 # isn't ahead of `release` fails here instead of rewriting the branch), then carries the release to
-# bp-sunnypilot (.github/release_bumps.sh, spec ford-op/bg-opendbc#97): bg-opendbc's bump PR, merged
+# bp-sunnypilot (.github/release_bumps.sh, spec ford-op/bg-opendbc#97): BluePilotDev/opendbc's bump PR, merged
 # here once its required checks pass, and a bp-sunnypilot PR left for review. A manual run takes the tag.
 name: release branch
 
@@ -23,7 +23,7 @@ concurrency:  # one release at a time, in order
 jobs:
   release-branch:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60  # waits for bg-opendbc's required checks
+    timeout-minutes: 60  # waits for BluePilotDev/opendbc's required checks
     steps:
     - uses: actions/checkout@v7
       with:
@@ -43,9 +43,9 @@ jobs:
       with:
         app-id: ${{ secrets.SYNC_APP_ID }}
         private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
-        owner: ford-op
-        repositories: bg-opendbc,bp-sunnypilot
-    - name: bg-opendbc bump (merged on green), then the bp-sunnypilot PR
+        owner: BluePilotDev
+        repositories: opendbc,bp-sunnypilot
+    - name: opendbc bump (merged on green), then the bp-sunnypilot PR
       env:
         GH_TOKEN: ${{ steps.app.outputs.token }}
       run: .github/release_bumps.sh "$TAG" "$SHA"
