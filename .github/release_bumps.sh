@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # A library release, through to a bp-sunnypilot PR (spec: ford-op/bg-opendbc#97). Bumps the library in
 # BluePilotDev/opendbc and merges that PR once its required checks pass (nothing else auto-merges there), then
-# opens the bp-sunnypilot PR that moves opendbc_repo to the new bg-clean, saying whether it changes the
+# opens the bp-sunnypilot PR that moves opendbc_repo to the new bp-opendbc, saying whether it changes the
 # panda firmware or the lateral Python (a drive before merge if so). Not merged automatically.
 # usage: GH_TOKEN=<bluepilot-sync App token for opendbc and bp-sunnypilot> release_bumps.sh <tag> <commit>
 set -euo pipefail
@@ -30,7 +30,7 @@ open_pr() {  # <repo> <base> <branch> <title> <body>: the branch's open PR, or a
   if [ -n "$url" ]; then gh pr edit "$url" --title "$4" --body "$5" >/dev/null; echo "$url"
   else gh pr create -R "$OWNER/$1" -B "$2" -H "$3" --title "$4" --body "$5"; fi
 }
-# bg-clean's required checks (its branch protection; the App can't read protection, so they're listed)
+# bp-opendbc's required checks (its branch protection; the App can't read protection, so they're listed)
 REQUIRED=("./test.sh (Linux)" "safety" "bluepilot-safety" "bluepilot-hooks")
 wait_required() {  # <pr>: until every required check has reported and passed; fails on the first failure
   local out n state
@@ -51,7 +51,7 @@ wait_required() {  # <pr>: until every required check has reported and passed; f
 }
 
 # 1. BluePilotDev/opendbc: the library pointer, merged on green
-clone opendbc bg-clean "$WORK/bg"
+clone opendbc bp-opendbc "$WORK/bg"
 PIN=$(git -C "$WORK/bg" rev-parse HEAD:opendbc/bluepilot_lateral)
 if ! git -C "$LIB" merge-base --is-ancestor "$PIN" "$SHA"; then
   echo "$TAG (${SHA:0:8}) isn't ahead of BluePilotDev/opendbc's pin ${PIN:0:8}: nothing to do"; exit 1
@@ -62,7 +62,7 @@ if [ "$PIN" = "$SHA" ]; then
 else
   BRANCH="bump/library-$TAG"
   bump "$WORK/bg" opendbc/bluepilot_lateral "$SHA" "$BRANCH" "bluepilot_lateral: bump to $TAG"
-  PR=$(open_pr opendbc bg-clean "$BRANCH" "bluepilot_lateral: bump to $TAG" \
+  PR=$(open_pr opendbc bp-opendbc "$BRANCH" "bluepilot_lateral: bump to $TAG" \
 "The library pointer moves to bluepilot-lateral [$TAG](https://github.com/BluePilotDev/bluepilot-lateral/releases/tag/$TAG) (${SHA:0:8}). Opened by the library's release job, which merges it once the required checks pass (ford-op/bg-opendbc#97).
 
 ## Validation
@@ -76,10 +76,10 @@ else
   gh pr edit "$PR" --body-file "$WORK/body.md"
   gh pr merge "$PR" --squash --delete-branch
   BG=$(gh pr view "$PR" --json mergeCommit -q .mergeCommit.oid)
-  git -C "$WORK/bg" fetch -q origin bg-clean
+  git -C "$WORK/bg" fetch -q origin bp-opendbc
 fi
 
-# 2. bp-sunnypilot: opendbc_repo to that bg-clean, as a PR
+# 2. bp-sunnypilot: opendbc_repo to that bp-opendbc, as a PR
 clone bp-sunnypilot master-local-lateral "$WORK/sp"
 OLD=$(git -C "$WORK/sp" rev-parse HEAD:opendbc_repo)
 if [ "$OLD" = "$BG" ]; then echo "bp-sunnypilot already at ${BG:0:8}"; exit 0; fi
@@ -98,9 +98,9 @@ DRIVE=""
 [ -n "$FW$LAT" ] && DRIVE="
 - [ ] A drive (panda firmware or lateral Python changed)"
 BRANCH="opendbc/library-$TAG"
-bump "$WORK/sp" opendbc_repo "$BG" "$BRANCH" "opendbc_repo: bg-clean ${BG:0:8} (bluepilot-lateral $TAG)"
+bump "$WORK/sp" opendbc_repo "$BG" "$BRANCH" "opendbc_repo: bp-opendbc ${BG:0:8} (bluepilot-lateral $TAG)"
 open_pr bp-sunnypilot master-local-lateral "$BRANCH" "opendbc_repo: bluepilot-lateral $TAG" \
-"\`opendbc_repo\` moves to BluePilotDev/opendbc \`bg-clean\` ${BG:0:8}, which has bluepilot-lateral [$TAG](https://github.com/BluePilotDev/bluepilot-lateral/releases/tag/$TAG). Opened by the library's release job (ford-op/bg-opendbc#97); not merged automatically.
+"\`opendbc_repo\` moves to BluePilotDev/opendbc \`bp-opendbc\` ${BG:0:8}, which has bluepilot-lateral [$TAG](https://github.com/BluePilotDev/bluepilot-lateral/releases/tag/$TAG). Opened by the library's release job (ford-op/bg-opendbc#97); not merged automatically.
 
 - Panda firmware (\`.h\`/\`.c\`) changed:
 $(list "$FW")
