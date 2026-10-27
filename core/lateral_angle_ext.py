@@ -34,17 +34,17 @@ ROC check (2% looser).
 import numpy as np
 from numpy import clip, interp
 
-from opendbc.car import DT_CTRL
-from opendbc.car.lateral import apply_std_steer_angle_limits
-from opendbc.car.ford.values import CarControllerParams
-from opendbc.bluepilot_lateral.core.lateral_curv_ext import LateralResult
-from opendbc.bluepilot_lateral.core.lane_center_trim import LaneCenterTrim
-from opendbc.bluepilot_lateral.core.values_ext import (
+from ...car import DT_CTRL
+from ...car.lateral import apply_std_steer_angle_limits
+from ...car.ford.values import CarControllerParams
+from .lateral_curv_ext import LateralResult
+from .lane_center_trim import LaneCenterTrim
+from .values_ext import (
   ANGLE_GAIN_CAN, ANGLE_GAIN_CANFD_BOF, ANGLE_GAIN_CANFD_BOF_CARS, ANGLE_GAIN_CANFD_SUV, ANGLE_GAIN_CANFD_SUV_CARS,
   BP_ANGLE_LIMITS, LANE_CHANGE_FACTOR_BP, LANE_CHANGE_FACTOR_LOW,
 )
-from opendbc.bluepilot_lateral.core.values_ext import MODEL_T_IDXS
-from opendbc.bluepilot_lateral.params.manifest import default, value
+from .values_ext import MODEL_T_IDXS
+from ..params.manifest import default, value
 
 # DBC ``LatCtlPath_An_Actl`` (rad) — panda safety uses the same in ``ford.h``; PSCM enforces in firmware.
 FORD_DBC_PATH_ANGLE_MIN = -0.5

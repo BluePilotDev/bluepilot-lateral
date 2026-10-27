@@ -16,20 +16,21 @@ stock assertions the 4-signal lateral changes on purpose are replaced:
 """
 import unittest
 
-import opendbc.safety.tests.common as common
-from opendbc.bluepilot_lateral.core.values_ext import FordSafetyFlagsSP
-from opendbc.safety.tests import test_ford
-from opendbc.safety.tests.libsafety import libsafety_py
-from opendbc.bluepilot_lateral.safety.tests.ford_bluepilot_common import (
+from ....safety.tests import common
+from ...core.values_ext import FordSafetyFlagsSP
+from ....safety.tests import test_ford
+from ....safety.tests.libsafety import libsafety_py
+from .ford_bluepilot_common import (
   BPFordLateralModel, CURVATURE_TO_CAN, MAX_CURVATURE_ERROR_CAN, CURVATURE_SIGNAL_MAX_CAN,
 )
+from ...tests import host
 
 SKIP_REASON = "BluePilot 4-signal limits are asserted in test_ford_bluepilot_limits.py"
 
 
 class BPLateralMatrixMixin:
-  """Set the bit before ford_init runs, clear it after, and swap the four lateral tests
-  (three skipped, one replaced).
+  """Set the bit before ford_init runs, clear it after, and swap the host's stock lateral tests
+  (skipped below, or replaced).
 
   Class names must start with 'TestFord': common.py's cross-mode TX sweep only skips
   Ford-vs-Ford comparisons by that prefix."""
@@ -40,12 +41,13 @@ class BPLateralMatrixMixin:
 
   def setUp(self):
     self.safety = libsafety_py.libsafety
-    self.safety.set_current_safety_param_sp(self.PARAM_SP)
+    host.set_safety_param(self.safety, self.PARAM_SP)
     super().setUp()  # stock setUp: packer, set_safety_hooks, init_tests
     self.model = BPFordLateralModel(self.CANFD, self.MAX_CURVATURE_ERROR_CAN_BP)
 
   def tearDown(self):
-    self.safety.set_current_safety_param_sp(0)
+    host.set_safety_param(self.safety, 0)
+    super().tearDown()  # the host's own resets (IQ.Pilot's AOL state)
 
   @unittest.skip(SKIP_REASON)
   def test_steer_allowed(self):
@@ -53,6 +55,12 @@ class BPLateralMatrixMixin:
 
   @unittest.skip(SKIP_REASON)
   def test_curvature_rate_limits(self):
+    pass
+
+  # IQ.Pilot's test_ford: its stock controller (CURVATURE_LIMITS.apply_limits) against the stock checks.
+  # With BP_LATERAL set the car controller sends the BluePilot commands instead, never these.
+  @unittest.skip(SKIP_REASON)
+  def test_controller_limits_pass_safety(self):
     pass
 
   def test_max_lateral_acceleration(self):

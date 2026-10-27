@@ -2,10 +2,10 @@ import re
 import unittest
 from pathlib import Path
 
-from opendbc.car import structs
-from opendbc.bluepilot_lateral.core.values_ext import FordSafetyFlagsSP, FORD_PINION_GEOMETRY_INDEX, FORD_PINION_GEOMETRY_SHIFT
-from opendbc.bluepilot_lateral.hosts.sunnypilot.safety_param import init_ford_safety_param_sp
-from opendbc.car.ford.values import CAR
+from ...car import structs
+from . import host
+from ..core.values_ext import FordSafetyFlagsSP, FORD_PINION_GEOMETRY_INDEX, FORD_PINION_GEOMETRY_SHIFT
+from ...car.ford.values import CAR
 
 SAFETY = Path(__file__).resolve().parents[1] / "safety"
 
@@ -36,14 +36,14 @@ class TestSafetyParamBits(unittest.TestCase):
 
 
 class TestInitFordSafetyParamSp(unittest.TestCase):
-  """What init_ford_safety_param_sp puts in CP_SP.safetyParam at car init."""
+  """What the host adapter's init_ford_safety_param puts in its safety-param field at car init."""
 
   def _param_sp(self, params_dict, brand="ford", fingerprint=CAR.FORD_F_150_MK14):
     CP = structs.CarParams()
     CP.brand, CP.carFingerprint = brand, fingerprint
-    CP_SP = structs.CarParamsSP()
-    init_ford_safety_param_sp(CP, CP_SP, params_dict)
-    return CP_SP.safetyParam
+    CP_X = host.CarParamsX()
+    host.init_ford_safety_param(CP, CP_X, params_dict)
+    return getattr(CP_X, host.SAFETY_PARAM_FIELD)
 
   def test_bp_lateral_on_unless_disabled(self):
     self.assertEqual(self._param_sp({}), FordSafetyFlagsSP.BP_LATERAL)
@@ -68,15 +68,15 @@ class TestInitFordSafetyParamSp(unittest.TestCase):
 
 
 class TestLateralInputsRequired(unittest.TestCase):
-  """init_ford_safety_param_sp tells the host to fill CarControlSP.lateralInputs and the per-frame
+  """init_ford_safety_param tells the host to fill its CarControl's lateralInputs and the per-frame
   settings for every Ford, whether BluePilot lateral is on or off, and for no other brand."""
 
   def _required(self, params_dict, brand="ford"):
     CP = structs.CarParams()
     CP.brand, CP.carFingerprint = brand, CAR.FORD_F_150_MK14
-    CP_SP = structs.CarParamsSP()
-    init_ford_safety_param_sp(CP, CP_SP, params_dict)
-    return CP_SP.lateralInputsRequired
+    CP_X = host.CarParamsX()
+    host.init_ford_safety_param(CP, CP_X, params_dict)
+    return CP_X.lateralInputsRequired
 
   def test_every_ford(self):
     self.assertTrue(self._required({}))

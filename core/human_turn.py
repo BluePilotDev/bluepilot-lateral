@@ -7,8 +7,8 @@ each mode DOES with the signal differs: curvature-primary (``lateral_curv_ext``)
 (reset_steering + post-reset ramp); angle-primary (``lateral_angle_ext``) forces lateral inactive
 (mode 0 on the wire) and ramps path_angle back in from zero through its soft ROC on release.
 """
-from opendbc.car import DT_CTRL
-from opendbc.car.ford.values import CarControllerParams
+from ...car import DT_CTRL
+from ...car.ford.values import CarControllerParams
 
 # Require sustained hands-on AND a large angle (avoids resetting on small wheel nudges in a curve).
 HUMAN_TURN_ANGLE_DEG = 45.0

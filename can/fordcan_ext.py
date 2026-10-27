@@ -3,13 +3,13 @@ BluePilot Ford CAN message builder extensions (lateral only).
 
 Extended versions of the stock fordcan.py lateral builders:
   - Dynamic ramp_type and precision_type for the 4-signal lateral commands
-  - Lane_Assist_Data1 carries the angle-mode side channel read by opendbc/bluepilot_lateral/safety/ford.h
+  - Lane_Assist_Data1 carries the angle-mode side channel read by bluepilot_lateral/safety/ford.h
 
 Trimmed for the lateral proof-of-concept: the longitudinal, HUD and ICBM builders from
 BluePilot's fordcan_ext.py are out of scope here.
 """
 
-from opendbc.car.ford.fordcan import CanBus
+from ...car.ford.fordcan import CanBus
 
 
 # BluePilot: the Lane_Assist_Data1 side channel, see LANE_ASSIST_DATA1.md. ford_declarations.h has the
@@ -103,6 +103,26 @@ def create_lat_ctl2_msg(packer, CAN: CanBus, mode: int, ramp_type: int, precisio
     "LatCtlCrv_NoRate2_Actl": curvature_rate,   # [-0.001024|0.001023] 1/meter^2
     "HandsOffCnfm_B_Rq": 0,                     # 0=Inactive, 1=Active [0|1]
     "LatCtlPath_No_Cnt": counter,               # [0|15]
+    "LatCtlPath_No_Cs": 0,                      # [0|255]
   }
 
+  # Computed here, not left to the packer: upstream's packer fills Ford checksums itself (and overwrites
+  # this with the same value), but a host's packer may not (IQ.Pilot's doesn't), and the PSCM drops a
+  # frame whose checksum is wrong.
+  dat = packer.make_can_msg("LateralMotionControl2", CAN.main, values)[1]
+  values["LatCtlPath_No_Cs"] = lat_ctl2_checksum(mode, counter, dat)
   return packer.make_can_msg("LateralMotionControl2", CAN.main, values)
+
+
+def lat_ctl2_checksum(mode: int, counter: int, dat: bytes) -> int:
+  """LatCtlPath_No_Cs of a packed LateralMotionControl2: upstream's ford_checksum over the message's
+  checksum fields (mode, counter, curvature, curvature rate, path angle, path offset)."""
+  curvature = (dat[2] << 3) | (dat[3] >> 5)
+  curvature_rate = (dat[6] << 3) | (dat[7] >> 5)
+  path_angle = ((dat[3] & 0x1F) << 6) | (dat[4] >> 2)
+  path_offset = ((dat[4] & 0x3) << 8) | dat[5]
+
+  checksum = mode + counter
+  for sig_val in (curvature, curvature_rate, path_angle, path_offset):
+    checksum += sig_val + (sig_val >> 8)
+  return 0xFF - (checksum & 0xFF)

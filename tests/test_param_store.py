@@ -1,25 +1,24 @@
 import unittest
 
-from opendbc.car import structs
-from opendbc.bluepilot_lateral.params.param_store import ParamStore
-from opendbc.bluepilot_lateral.hosts.sunnypilot.lateral import params_from_cc_sp
-from opendbc.bluepilot_lateral.core.lateral_curv_ext import LateralCurvExt, PrimaryLateralControl
-from opendbc.bluepilot_lateral.params.manifest import value
-from opendbc.bluepilot_lateral.core.values_ext import BP_LATERAL_PARAMS
+from ..params.param_store import ParamStore
+from . import host
+from ..core.lateral_curv_ext import LateralCurvExt, PrimaryLateralControl
+from ..params.manifest import value
+from ..core.values_ext import BP_LATERAL_PARAMS
 
 
-def _cc_sp(**kv):
-  cc_sp = structs.CarControlSP()
+def _cc(**kv):
+  cc = host.CarControlX()
   for k, v in kv.items():
-    p = structs.CarControlSP.Param()
+    p = host.CarControlX.Param()
     p.key, p.value = k, v
-    cc_sp.params.append(p)
-  return cc_sp
+    cc.params.append(p)
+  return cc
 
 
 class TestParamStore(unittest.TestCase):
-  def test_sunnypilot_adapter_reads_cc_sp_params(self):
-    ps = params_from_cc_sp(_cc_sp(disable_BP_lat_UI=b"1", LC_PID_gain_UI_curv=b"3.5"))
+  def test_host_adapter_reads_cc_params(self):
+    ps = host.params_from_cc(_cc(disable_BP_lat_UI=b"1", LC_PID_gain_UI_curv=b"3.5"))
     self.assertEqual((ps.get("disable_BP_lat_UI"), ps.get("LC_PID_gain_UI_curv"), ps.get("custom_profile_curv")), ("1", "3.5", None))
 
   def test_reads_bool_int_float_like_params(self):

@@ -1,7 +1,7 @@
 import unittest
 
-from opendbc.car.ford.values import CAR
-from opendbc.bluepilot_lateral.core.values_ext import (
+from ...car.ford.values import CAR
+from ..core.values_ext import (
   ANGLE_GAIN_CANFD_BOF_CARS, ANGLE_GAIN_CANFD_SUV_CARS, FORD_HOST_ONLY_PLATFORMS, FORD_PINION_GEOMETRY_INDEX,
   FORD_PINION_WHEELBASE,
 )

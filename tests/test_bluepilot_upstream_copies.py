@@ -10,14 +10,23 @@ import tokenize
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]
+# the host's opendbc package (opendbc, iqdbc): the one the library is mounted in
+HOST = Path(__file__).resolve().parents[2]
 
-# (upstream file, function) -> hash of its normalized body; the copy is named in the comment
+# per host package: (upstream file, function) -> hash of its normalized body; the copy is named in the comment
 PINNED = {
-  ("opendbc/safety/lateral.h", "steer_curvature_cmd_checks"): "9b13985a8d01e88b",  # ford_bp_curvature_cmd_checks, bluepilot_lateral/safety/lateral.h
-  ("opendbc/car/ford/fordcan.py", "create_lka_msg"): "c7e38e4f0215dcf4",           # bluepilot_lateral/can/fordcan_ext.py
-  ("opendbc/car/ford/fordcan.py", "create_lat_ctl_msg"): "f00a87f31389cb91",       # bluepilot_lateral/can/fordcan_ext.py
-  ("opendbc/car/ford/fordcan.py", "create_lat_ctl2_msg"): "1653ca5622eccc77",      # bluepilot_lateral/can/fordcan_ext.py
+  "opendbc": {  # sunnypilot/opendbc
+    ("safety/lateral.h", "steer_curvature_cmd_checks"): "9b13985a8d01e88b",  # ford_bp_curvature_cmd_checks, bluepilot_lateral/safety/lateral.h
+    ("car/ford/fordcan.py", "create_lka_msg"): "c7e38e4f0215dcf4",           # bluepilot_lateral/can/fordcan_ext.py
+    ("car/ford/fordcan.py", "create_lat_ctl_msg"): "f00a87f31389cb91",       # bluepilot_lateral/can/fordcan_ext.py
+    ("car/ford/fordcan.py", "create_lat_ctl2_msg"): "1653ca5622eccc77",      # bluepilot_lateral/can/fordcan_ext.py
+  },
+  "iqdbc": {  # IQ.Pilot: Ford on the native-curvature names; its packer leaves the LMC2 checksum to fordcan.py
+    ("safety/lateral.h", "steer_native_curvature_cmd_checks"): "8088e24c40855caa",  # ford_bp_curvature_cmd_checks, bluepilot_lateral/safety/lateral.h
+    ("car/ford/fordcan.py", "create_lka_msg"): "c7e38e4f0215dcf4",                  # bluepilot_lateral/can/fordcan_ext.py
+    ("car/ford/fordcan.py", "create_lat_ctl_msg"): "f00a87f31389cb91",              # bluepilot_lateral/can/fordcan_ext.py
+    ("car/ford/fordcan.py", "create_lat_ctl2_msg"): "4147e71aa7c6c51f",             # bluepilot_lateral/can/fordcan_ext.py
+  },
 }
 
 
@@ -47,14 +56,16 @@ def py_function(src: str, name: str) -> str:
 
 
 def body_hash(path: str, name: str) -> str:
-  src = (ROOT / path).read_text()
+  src = (HOST / path).read_text()
   body = c_function(src, name) if path.endswith(".h") else py_function(src, name)
   return hashlib.sha256(body.encode()).hexdigest()[:16]
 
 
 class TestBluePilotUpstreamCopies(unittest.TestCase):
   def test_upstream_bodies_unchanged(self):
-    for (path, name), pinned in PINNED.items():
+    if HOST.name not in PINNED:
+      self.skipTest(f"no pins for host package {HOST.name}: add its upstream hashes to PINNED")
+    for (path, name), pinned in PINNED[HOST.name].items():
       with self.subTest(function=name):
         self.assertEqual(body_hash(path, name), pinned,
                          f"upstream {name} ({path}) changed: port what applies to the BluePilot copy, then update the hash")

@@ -8,12 +8,13 @@ The BluePilot limits are covered separately.
 """
 import unittest
 
-from opendbc.car.structs import CarParams
-from opendbc.car.ford.values import FordSafetyFlags
-from opendbc.bluepilot_lateral.core.values_ext import FordSafetyFlagsSP
-from opendbc.safety.tests.libsafety import libsafety_py
-from opendbc.safety.tests.common import CANPackerSafety
-from opendbc.safety.tests import test_ford  # module import: keeps its test classes out of this module's discovery
+from ....car.structs import CarParams
+from ....car.ford.values import FordSafetyFlags
+from ...core.values_ext import FordSafetyFlagsSP
+from ....safety.tests.libsafety import libsafety_py
+from ....safety.tests.common import CANPackerSafety
+from ....safety.tests import test_ford  # module import: keeps its test classes out of this module's discovery
+from ...tests import host
 
 SPEED = 15.0             # m/s, above the curvature-error gate, inside the path_angle ROC table
 SMALL_PATH_ANGLE = 0.01  # rad, well inside the per-call ROC at this speed (~0.043)
@@ -29,11 +30,12 @@ class TestFordBPLateralBit(unittest.TestCase):
     self.h.safety = libsafety_py.libsafety
 
   def tearDown(self):
-    self.h.safety.set_current_safety_param_sp(0)
+    host.set_safety_param(self.h.safety, 0)
+    super().tearDown()
 
   def _init(self, param_sp: int):
     h = self.h
-    h.safety.set_current_safety_param_sp(param_sp)
+    host.set_safety_param(h.safety, param_sp)
     h.safety.set_safety_hooks(CarParams.SafetyModel.ford, FordSafetyFlags.CANFD)
     h.safety.init_tests()
     h.safety.set_controls_allowed(True)

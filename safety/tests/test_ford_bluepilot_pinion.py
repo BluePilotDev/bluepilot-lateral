@@ -10,22 +10,21 @@ BP matrix classes; the geometry-table check reads the C table from source (no li
 getters), so no upstream harness file is touched.
 """
 import unittest
+from types import SimpleNamespace
 
 import numpy as np
 
-from opendbc.car import scale_tire_stiffness_per_mass
-from opendbc.car.ford.values import CAR
-from opendbc.car.structs import CarParams
-from opendbc.car.vehicle_model import VehicleModel, calc_slip_factor
-from opendbc.bluepilot_lateral.core.values_ext import (
+from ....car.ford.values import CAR
+from ....car.vehicle_model import VehicleModel, calc_slip_factor
+from ...core.values_ext import (
   FordSafetyFlagsSP, FORD_HOST_ONLY_PLATFORMS, FORD_PINION_GEOMETRY_INDEX, FORD_PINION_GEOMETRY_SHIFT, FORD_PINION_WHEELBASE,
 )
-from opendbc.bluepilot_lateral.core.carcontroller_ext import pinion_vehicle_model
-from opendbc.car.ford.interface import CarInterface
-from opendbc.bluepilot_lateral.safety.tests.ford_bluepilot_common import (
+from ...core.carcontroller_ext import pinion_vehicle_model, scale_tire_stiffness_per_mass
+from ....car.ford.interface import CarInterface
+from .ford_bluepilot_common import (
   CURVATURE_TO_CAN, CURVATURE_ERROR_MIN_SPEED, MAX_CURVATURE_ERROR_CAN_PINION, pinion_geometry_table,
 )
-from opendbc.bluepilot_lateral.safety.tests import test_ford_bluepilot_matrix as matrix
+from . import test_ford_bluepilot_matrix as matrix
 
 
 def pinion_param_sp(geometry_index: int) -> int:
@@ -40,6 +39,7 @@ class BPPinionMixin:
   TestFordBPPinionGeometryTable checks that row against CarSpecs."""
 
   MAX_CURVATURE_ERROR_CAN_BP = MAX_CURVATURE_ERROR_CAN_PINION
+  MAX_CURVATURE_ERROR = MAX_CURVATURE_ERROR_CAN_PINION / CURVATURE_TO_CAN  # the host's own error-band tests (IQ.Pilot's test_ford)
   GEOMETRY_INDEX = 0
   PINION_SLIP_FACTOR, PINION_STEER_RATIO, PINION_WHEELBASE = GEOMETRY[0]
   cnt_pinion = 0
@@ -204,12 +204,12 @@ class TestFordBPPinionGeometryTable(unittest.TestCase):
   def _assert_row_matches_carspecs(self, car, idx):
     specs = car.config.specs
     wheelbase = FORD_PINION_WHEELBASE.get(car, specs.wheelbase)
-    CP = CarParams()
-    CP.wheelbase = wheelbase
-    CP.steerRatio = specs.steerRatio
-    CP.centerToFront = wheelbase * specs.centerToFrontRatio
-    CP.tireStiffnessFactor = specs.tireStiffnessFactor
-    CP.tireStiffnessFrontPerMass, CP.tireStiffnessRearPerMass = scale_tire_stiffness_per_mass(CP.wheelbase, CP.centerToFront, CP.tireStiffnessFactor)
+    center_to_front = wheelbase * specs.centerToFrontRatio
+    front, rear = scale_tire_stiffness_per_mass(wheelbase, center_to_front, specs.tireStiffnessFactor)
+    # both VehicleModel signatures, as pinion_vehicle_model builds it (slip factor doesn't read inertia)
+    CP = SimpleNamespace(wheelbase=wheelbase, steerRatio=specs.steerRatio, centerToFront=center_to_front,
+                         tireStiffnessFrontPerMass=front, tireStiffnessRearPerMass=rear, rotationalInertiaPerMass=1.0,
+                         mass=1.0, tireStiffnessFront=front, tireStiffnessRear=rear, rotationalInertia=1.0, steerRatioRear=0.)
     slip_factor = calc_slip_factor(VehicleModel(CP))
 
     slip, sr, wb = GEOMETRY[idx]

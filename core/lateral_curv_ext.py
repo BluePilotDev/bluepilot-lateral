@@ -21,13 +21,13 @@ from enum import IntEnum
 import numpy as np
 from numpy import clip, interp
 
-from opendbc.car.common.pid import PIDController
-from opendbc.car import ACCELERATION_DUE_TO_GRAVITY
-from opendbc.car.lateral import ISO_LATERAL_ACCEL, apply_std_steer_angle_limits
-from opendbc.car.ford.values import CarControllerParams, FordFlags
-from opendbc.bluepilot_lateral.core.values_ext import BP_ANGLE_LIMITS, CURVATURE_MAX, LANE_CHANGE_FACTOR_BP, LANE_CHANGE_FACTOR_LOW
-from opendbc.bluepilot_lateral.core.values_ext import MODEL_T_IDXS
-from opendbc.bluepilot_lateral.params.manifest import default, value
+from ...car.common.pid import PIDController
+from ...car import ACCELERATION_DUE_TO_GRAVITY
+from ...car.lateral import ISO_LATERAL_ACCEL, apply_std_steer_angle_limits
+from ...car.ford.values import CarControllerParams, FordFlags
+from .values_ext import BP_ANGLE_LIMITS, CURVATURE_MAX, LANE_CHANGE_FACTOR_BP, LANE_CHANGE_FACTOR_LOW
+from .values_ext import MODEL_T_IDXS
+from ..params.manifest import default, value
 
 
 # the settings curvature mode reads (params/manifest.py), each kept as an attribute of the same name

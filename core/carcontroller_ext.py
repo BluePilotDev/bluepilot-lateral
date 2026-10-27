@@ -14,18 +14,29 @@ continues from the last command, as before.
 import math
 from types import SimpleNamespace
 
-from opendbc.car import scale_rot_inertia_per_mass, scale_tire_stiffness_per_mass
-from opendbc.car.ford.values import CarControllerParams, FordFlags
-from opendbc.car.vehicle_model import VehicleModel
-from opendbc.bluepilot_lateral.can import fordcan_ext
-from opendbc.bluepilot_lateral.core.lateral_angle_ext import LateralAngleExt
-from opendbc.bluepilot_lateral.core.lateral_curv_ext import LateralCurvExt, PrimaryLateralControl
-from opendbc.bluepilot_lateral.params.manifest import value
-from opendbc.bluepilot_lateral.params.param_store import ParamStore
-from opendbc.bluepilot_lateral.core.values_ext import FORD_PINION_WHEELBASE, FordSafetyFlagsSP
-from opendbc.bluepilot_lateral.core.human_turn import HumanTurnDetector
-from opendbc.bluepilot_lateral.host_types import LateralInputs, LateralStatus
-from opendbc.bluepilot_lateral.core.lateral_inputs import ModelView, VehicleParamsView, lateral_inputs_complete
+try:
+  from ...car import scale_rot_inertia_per_mass, scale_tire_stiffness_per_mass
+except ImportError:
+  # a host on opendbc from before the per-mass vehicle model (IQ.Pilot): its mass-scaled helpers at unit
+  # mass are the per-mass values
+  from ...car import scale_rot_inertia, scale_tire_stiffness
+
+  def scale_rot_inertia_per_mass(wheelbase):
+    return scale_rot_inertia(1.0, wheelbase)
+
+  def scale_tire_stiffness_per_mass(wheelbase, center_to_front, tire_stiffness_factor):
+    return scale_tire_stiffness(1.0, wheelbase, center_to_front, tire_stiffness_factor)
+from ...car.ford.values import CarControllerParams, FordFlags
+from ...car.vehicle_model import VehicleModel
+from ..can import fordcan_ext
+from .lateral_angle_ext import LateralAngleExt
+from .lateral_curv_ext import LateralCurvExt, PrimaryLateralControl
+from ..params.manifest import value
+from ..params.param_store import ParamStore
+from .values_ext import FORD_PINION_WHEELBASE, FordSafetyFlagsSP
+from .human_turn import HumanTurnDetector
+from ..host_types import LateralInputs, LateralStatus
+from .lateral_inputs import ModelView, VehicleParamsView, lateral_inputs_complete
 
 
 def pinion_vehicle_model(CP):
@@ -37,10 +48,14 @@ def pinion_vehicle_model(CP):
     return VehicleModel(CP)
   center_to_front = wheelbase * CP.centerToFront / CP.wheelbase
   front, rear = scale_tire_stiffness_per_mass(wheelbase, center_to_front, CP.tireStiffnessFactor)
+  inertia = scale_rot_inertia_per_mass(wheelbase)
+  # Both VehicleModel signatures: upstream's per-mass fields, and the mass-scaled ones an older host's
+  # model reads, at unit mass (mass cancels out of the model, so the two are the same model).
   return VehicleModel(SimpleNamespace(
-    rotationalInertiaPerMass=scale_rot_inertia_per_mass(wheelbase), wheelbase=wheelbase,
+    rotationalInertiaPerMass=inertia, wheelbase=wheelbase,
     centerToFront=center_to_front, steerRatio=CP.steerRatio,
-    tireStiffnessFrontPerMass=front, tireStiffnessRearPerMass=rear))
+    tireStiffnessFrontPerMass=front, tireStiffnessRearPerMass=rear,
+    mass=1.0, rotationalInertia=inertia, tireStiffnessFront=front, tireStiffnessRear=rear, steerRatioRear=0.))
 
 
 class InputTracker:

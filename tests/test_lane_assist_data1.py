@@ -5,8 +5,8 @@ import re
 import unittest
 from pathlib import Path
 
-from opendbc.can.dbc import DBC
-from opendbc.bluepilot_lateral.can import fordcan_ext
+from ...can.dbc import DBC
+from ..can import fordcan_ext
 
 DECLARATIONS = Path(__file__).resolve().parents[1] / "safety" / "ford_declarations.h"
 CURVATURE_TO_CAN = 50000  # curvature CAN units per 1/m (FORD_LIMITS .curvature_to_can)

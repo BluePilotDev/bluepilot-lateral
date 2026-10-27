@@ -8,7 +8,7 @@ through `value` (per frame, from the CarControlSP.params ParamStore) or `startup
 params dict), with one rule: a published, parseable value is used; missing, empty or unparsable
 gives the default.
 
-`python -m opendbc.bluepilot_lateral.params.manifest` prints the lines for a host's params_keys.h.
+`python -m <pkg>.bluepilot_lateral.params.manifest` prints the lines for a host's params_keys.h (<pkg>: the host's opendbc package).
 """
 from dataclasses import dataclass
 from typing import Literal

@@ -2,8 +2,8 @@
 BluePilot: the sunnypilot host adapter for the lateral (HOSTS.md). The Ford CarController builds this
 with sunnypilot's types; it hands the core the library's types and nothing sunnypilot-specific.
 """
-from opendbc.bluepilot_lateral.core import carcontroller_ext
-from opendbc.bluepilot_lateral.params.param_store import ParamStore
+from ...core import carcontroller_ext
+from ...params.param_store import ParamStore
 
 
 def params_from_cc_sp(CC_SP) -> ParamStore:

@@ -16,14 +16,15 @@ from pathlib import Path
 
 import numpy as np
 
-from opendbc.car.structs import CarParams
-from opendbc.car.ford.fordcan import CanBus
-from opendbc.car.ford.values import FordSafetyFlags
-from opendbc.bluepilot_lateral.can import fordcan_ext
-from opendbc.bluepilot_lateral.core.values_ext import FordSafetyFlagsSP
-from opendbc.safety.tests.libsafety import libsafety_py
-from opendbc.safety.tests.common import CANPackerSafety
-from opendbc.safety.tests import test_ford  # module import keeps its test classes out of discovery here
+from ....car.structs import CarParams
+from ....car.ford.fordcan import CanBus
+from ....car.ford.values import FordSafetyFlags
+from ...can import fordcan_ext
+from ...core.values_ext import FordSafetyFlagsSP
+from ....safety.tests.libsafety import libsafety_py
+from ....safety.tests.common import CANPackerSafety
+from ....safety.tests import test_ford  # module import keeps its test classes out of discovery here
+from ...tests import host
 
 f32 = np.float32
 
@@ -229,11 +230,12 @@ class BPFordTestCase(unittest.TestCase):
 
   def tearDown(self):
     # stock classes in the same process must not inherit the bit
-    self.safety.set_current_safety_param_sp(0)
+    host.set_safety_param(self.safety, 0)
+    super().tearDown()  # the host's own resets (IQ.Pilot's AOL state)
 
   def reinit(self):
     """A safety-mode init with the BP bit set (ford_init reads the bit)."""
-    self.safety.set_current_safety_param_sp(self.PARAM_SP)
+    host.set_safety_param(self.safety, self.PARAM_SP)
     self.safety.set_safety_hooks(CarParams.SafetyModel.ford, FordSafetyFlags.CANFD if self.CANFD else 0)
 
   # --- wrappers over upstream's builders ---

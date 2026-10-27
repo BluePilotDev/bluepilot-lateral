@@ -5,16 +5,17 @@
 
 #pragma once
 
-#include "opendbc/safety/declarations.h"
-#include "opendbc/bluepilot_lateral/safety/lateral_declarations.h"
+#include "../../safety/declarations.h"
+#include "../safety/lateral_declarations.h"
 
 // BluePilot: Ford safety debug prints. Compile-time switch: build with -DFORD_BP_DEBUG (bench /
 // libsafety only) to turn every FORD_BP_DBG into a printf; otherwise it expands to nothing, so CI
 // coverage and mutation see no code and the panda build carries no runtime flag. The printf
 // branch is bench-only and is not part of the MISRA-checked configuration (test_misra.sh runs
 // without FORD_BP_DEBUG). To use it on the bench, compile libsafety with
-//   cc ... -DALLOW_DEBUG -DFORD_BP_DEBUG -I . -c opendbc/safety/tests/libsafety/safety.c
-// (the same flags opendbc/safety/tests/libsafety/libsafety_py.py uses, plus FORD_BP_DEBUG).
+//   cc ... -DALLOW_DEBUG -DFORD_BP_DEBUG -I . -c <pkg>/safety/tests/libsafety/safety.c
+// (the same flags <pkg>/safety/tests/libsafety/libsafety_py.py uses, plus FORD_BP_DEBUG; <pkg> is the
+// host's opendbc package: opendbc, iqdbc).
 #ifdef FORD_BP_DEBUG
 #include <stdio.h>
 #define FORD_BP_DBG(...) printf(__VA_ARGS__)
@@ -34,7 +35,7 @@
 #define FORD_PINION_GEOMETRY_ROWS 13U
 
 // Control signal limits -- curvature magnitude must match MAX_CURVATURE; rate tables must match
-// opendbc/bluepilot_lateral/core/values_ext.py BP_ANGLE_LIMITS.
+// bluepilot_lateral/core/values_ext.py BP_ANGLE_LIMITS.
 #define FORD_CURVATURE_MIN -0.02f
 #define FORD_CURVATURE_MAX 0.02f
 #define FORD_PATH_OFFSET_MIN -1.0f
@@ -62,7 +63,7 @@ extern const AngleSteeringParams ford_pinion_geometry[FORD_PINION_GEOMETRY_ROWS]
 
 // BluePilot: angle_mode_engaged + shadow_curvature, read out of Lane_Assist_Data1's unused
 // bits by ford_bp_lka_tx (no separate CAN message, no RX). The layout is in
-// opendbc/bluepilot_lateral/can/LANE_ASSIST_DATA1.md; fordcan_ext.py packs it with the same values
+// bluepilot_lateral/can/LANE_ASSIST_DATA1.md; fordcan_ext.py packs it with the same values
 // (tests/test_lane_assist_data1.py).
 #define FORD_BP_LKA_ANGLE_MODE_BYTE 4U
 #define FORD_BP_LKA_ANGLE_MODE_MASK 0x1U
@@ -83,7 +84,7 @@ extern int desired_path_offset_last;
 
 static inline bool path_angle_cmd_checks(int desired_path_angle, bool steer_control_enabled, AngleSteeringLimits limits);
 static inline bool path_offset_cmd_checks(int desired_path_offset, bool steer_control_enabled, AngleSteeringLimits limits);
-static inline bool ford_shadow_curvature_error_check(int desired_curvature, bool steer_control_enabled, CurvatureSteeringLimits limits);
+static inline bool ford_shadow_curvature_error_check(int desired_curvature, bool steer_control_enabled, BP_HOST_CURVATURE_LIMITS limits);
 
 // Shared curvature/curvature_rate/path_offset/path_angle command checks for LateralMotionControl
 // (CAN) and LateralMotionControl2 (CAN FD) -- see ford_lmc_checks in ford.h.

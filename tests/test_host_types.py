@@ -4,8 +4,8 @@ import sys
 import unittest
 from pathlib import Path
 
-from opendbc.car import structs
-from opendbc.bluepilot_lateral import host_types
+from . import host
+from .. import host_types
 
 HOST_TYPES = Path(host_types.__file__)
 
@@ -34,8 +34,8 @@ class TestHostTypes(unittest.TestCase):
     a.pathX.append(1.0)
     self.assertEqual(b.pathX, [])
 
-  def test_car_control_sp_carries_the_library_type(self):
-    self.assertIsInstance(structs.CarControlSP().lateralInputs, host_types.LateralInputs)
+  def test_host_car_control_carries_the_library_type(self):
+    self.assertIsInstance(host.CarControlX().lateralInputs, host_types.LateralInputs)
 
   def test_imports_only_the_standard_library(self):
     # structs.py imports this module, so anything beyond the standard library risks an import cycle

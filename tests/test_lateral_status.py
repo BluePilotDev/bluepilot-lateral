@@ -2,14 +2,14 @@ import unittest
 from dataclasses import fields
 from types import SimpleNamespace
 
-from opendbc.can import CANPacker
-from opendbc.car.ford import fordcan
-from opendbc.car.ford.interface import CarInterface
-from opendbc.car.ford.values import CAR
-from opendbc.bluepilot_lateral.core.carcontroller_ext import BluePilotLateral
-from opendbc.bluepilot_lateral.core.lateral_curv_ext import LateralResult, PrimaryLateralControl
-from opendbc.bluepilot_lateral.core.values_ext import FordSafetyFlagsSP
-from opendbc.bluepilot_lateral.host_types import LateralStatus
+from ...can import CANPacker
+from ...car.ford import fordcan
+from ...car.ford.interface import CarInterface
+from ...car.ford.values import CAR
+from ..core.carcontroller_ext import BluePilotLateral
+from ..core.lateral_curv_ext import LateralResult, PrimaryLateralControl
+from ..core.values_ext import FordSafetyFlagsSP
+from ..host_types import LateralStatus
 
 # the names BP7's controllerStateBP publisher reads off its car controller (bp_card_publisher.py):
 # a rename or a dropped value breaks BP7's UI
