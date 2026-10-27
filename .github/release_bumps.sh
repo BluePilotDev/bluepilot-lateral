@@ -80,7 +80,7 @@ else
 fi
 
 # 2. bp-sunnypilot: opendbc_repo to that bp-opendbc, as a PR
-clone bp-sunnypilot master-local-lateral "$WORK/sp"
+clone bp-sunnypilot bp-sunnypilot "$WORK/sp"
 OLD=$(git -C "$WORK/sp" rev-parse HEAD:opendbc_repo)
 if [ "$OLD" = "$BG" ]; then echo "bp-sunnypilot already at ${BG:0:8}"; exit 0; fi
 OLDLIB=$(git -C "$WORK/bg" rev-parse "$OLD:opendbc/bluepilot_lateral")
@@ -99,7 +99,7 @@ DRIVE=""
 - [ ] A drive (panda firmware or lateral Python changed)"
 BRANCH="opendbc/library-$TAG"
 bump "$WORK/sp" opendbc_repo "$BG" "$BRANCH" "opendbc_repo: bp-opendbc ${BG:0:8} (bluepilot-lateral $TAG)"
-open_pr bp-sunnypilot master-local-lateral "$BRANCH" "opendbc_repo: bluepilot-lateral $TAG" \
+open_pr bp-sunnypilot bp-sunnypilot "$BRANCH" "opendbc_repo: bluepilot-lateral $TAG" \
 "\`opendbc_repo\` moves to BluePilotDev/opendbc \`bp-opendbc\` ${BG:0:8}, which has bluepilot-lateral [$TAG](https://github.com/BluePilotDev/bluepilot-lateral/releases/tag/$TAG). Opened by the library's release job (ford-op/bg-opendbc#97); not merged automatically.
 
 - Panda firmware (\`.h\`/\`.c\`) changed:
