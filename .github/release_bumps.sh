@@ -9,7 +9,7 @@ TAG=$1 SHA=$2
 LIB=$(pwd)
 WORK=$(mktemp -d)
 git config --global user.name "bluepilot-sync[bot]"
-git config --global user.email "bluepilot-sync[bot]@users.noreply.github.com"
+git config --global user.email "348581487+bluepilot-sync[bot]@users.noreply.github.com"
 OWNER=BluePilotDev  # where opendbc and bp-sunnypilot live
 # the clones have no submodules checked out: a fetch that recursed into a moved gitlink would fail
 git config --global fetch.recurseSubmodules false
