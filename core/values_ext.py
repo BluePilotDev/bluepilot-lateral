@@ -1,7 +1,7 @@
-from opendbc.car import structs
-from opendbc.car.lateral import AngleSteeringLimits
-from opendbc.bluepilot_lateral import host_types
-from opendbc.bluepilot_lateral.params.manifest import PER_FRAME_KEYS, startup_value
+from ...car import structs
+from ...car.lateral import AngleSteeringLimits
+from .. import host_types
+from ..params.manifest import PER_FRAME_KEYS, startup_value
 
 
 class FordSafetyFlagsSP:

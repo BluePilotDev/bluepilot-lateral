@@ -8,10 +8,10 @@ C, so boundaries are asserted at the exact CAN unit on both x86 and ARM.
 import random
 import unittest
 
-import opendbc.safety.tests.common as common
-from opendbc.can.dbc import DBC
+from ....safety.tests import common
+from ....can.dbc import DBC
 
-from opendbc.bluepilot_lateral.safety.tests.ford_bluepilot_common import (
+from .ford_bluepilot_common import (
   BPFordTestCase, angle_roc_delta, SMALL_ANGLE, FORMER_LATCH_WINDOW_FRAMES, CURVATURE_SIGNAL_MAX_CAN,
   CURVATURE_TO_CAN, MAX_CURVATURE_CAN, MAX_CURVATURE_ERROR_CAN, CURVATURE_ERROR_MIN_SPEED,
   PATH_ANGLE_TO_CAN, PATH_ANGLE_MAX_CAN, PATH_ANGLE_DBC_MIN_CAN, PATH_ANGLE_DBC_MAX_CAN,
@@ -19,6 +19,7 @@ from opendbc.bluepilot_lateral.safety.tests.ford_bluepilot_common import (
   PATH_OFFSET_TO_CAN, PATH_OFFSET_MAX_CAN, PATH_OFFSET_LOOKUP_X, PATH_OFFSET_LOOKUP_Y,
   CURVATURE_RATE_TO_CAN_CANFD, CURVATURE_RATE_TO_CAN_CAN,
 )
+from ...tests import host
 
 # speeds chosen to hit both sides of the error-band gate (10 m/s) and every segment of the
 # {5, 16, 25} rate table, plus its clamped ends
@@ -177,7 +178,7 @@ class TestFordBPLimitsCANFD(BPFordTestCase):
       self.safety.set_controls_allowed(True)
       self.assertTrue(self._probe(20, 10))
       self.safety.set_controls_allowed(False)
-      self.safety.set_controls_allowed_lateral(False)
+      host.set_controls_allowed_lat(self.safety, False)
       with self.subTest(angle_mode=angle_mode):
         self.assertFalse(self._probe(20, 10))
         self.assertFalse(self.tx(self.lat(True, 0, SMALL_ANGLE, 0, 0)))
@@ -225,7 +226,7 @@ class TestFordBPLimitsCANFD(BPFordTestCase):
     self.set_meas(0.01, 15.0)  # measured 500 CAN: a real curvature command of 0 would be far outside the band
     self.assertTrue(self.tx(self.lat(True, 0, SMALL_ANGLE, 0, 0)))
     self.safety.set_controls_allowed(False)
-    self.safety.set_controls_allowed_lateral(False)
+    host.set_controls_allowed_lat(self.safety, False)
     self.assertFalse(self.tx(self.lat(True, 0, SMALL_ANGLE, 0, 0)))
     self.safety.set_controls_allowed(True)
 

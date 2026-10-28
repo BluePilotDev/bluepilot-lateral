@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "opendbc/bluepilot_lateral/safety/lateral_declarations.h"
+#include "../safety/lateral_declarations.h"
 
 // BluePilot: measured-table rate limiting. This is the pre-sync steer_angle_cmd_checks logic,
 // carried over verbatim in the curvature domain so Ford lateral behavior is unchanged by the
@@ -16,7 +16,7 @@
 //     hard-clamping, so a wound-up command unwinds instead of instantly faulting
 //   - the ISO lateral accel cap is applied only on buses that need it (Q4/CAN FD)
 static inline bool ford_bp_curvature_rate_lookup_check(int desired_curvature, const FordBpCurvatureLimits *limits) {
-  const CurvatureSteeringLimits *base = &limits->base;
+  const BP_HOST_CURVATURE_LIMITS *base = &limits->base;
   bool violation = false;
 
   const float fudged_speed_lookup = (vehicle_speed.min / VEHICLE_SPEED_FACTOR) - 1.;
@@ -24,8 +24,8 @@ static inline bool ford_bp_curvature_rate_lookup_check(int desired_curvature, co
   const int delta_down = (safety_interpolate(limits->curvature_rate_down_lookup, fudged_speed_lookup) * base->curvature_to_can) + 1.;
 
   // allow down limits at zero since small floats from openpilot will be rounded to 0
-  int highest_desired_curvature = curvature_state.desired_last + ((curvature_state.desired_last > 0) ? delta_up : delta_down);
-  int lowest_desired_curvature = curvature_state.desired_last - ((curvature_state.desired_last >= 0) ? delta_down : delta_up);
+  int highest_desired_curvature = BP_HOST_CURVATURE_STATE.desired_last + ((BP_HOST_CURVATURE_STATE.desired_last > 0) ? delta_up : delta_down);
+  int lowest_desired_curvature = BP_HOST_CURVATURE_STATE.desired_last - ((BP_HOST_CURVATURE_STATE.desired_last >= 0) ? delta_down : delta_up);
 
   if (base->max_curvature_error && ((vehicle_speed.values[0] / VEHICLE_SPEED_FACTOR) > base->curvature_error_min_speed)) {
     // flipped fudge to avoid false positives
@@ -33,17 +33,17 @@ static inline bool ford_bp_curvature_rate_lookup_check(int desired_curvature, co
     const int delta_up_relaxed = (safety_interpolate(limits->curvature_rate_up_lookup, fudged_speed_error) * base->curvature_to_can) - 1.;
     const int delta_down_relaxed = (safety_interpolate(limits->curvature_rate_down_lookup, fudged_speed_error) * base->curvature_to_can) - 1.;
 
-    const int lowest_desired_curvature_error = curvature_state.meas.min - base->max_curvature_error - 1;
-    const int highest_desired_curvature_error = curvature_state.meas.max + base->max_curvature_error + 1;
+    const int lowest_desired_curvature_error = BP_HOST_CURVATURE_STATE.meas.min - base->max_curvature_error - 1;
+    const int highest_desired_curvature_error = BP_HOST_CURVATURE_STATE.meas.max + base->max_curvature_error + 1;
 
     // the MAX/MIN allow the desired value to reach the edge of the bounds without going under
-    if (curvature_state.desired_last > highest_desired_curvature_error) {
-      const int delta = (curvature_state.desired_last >= 0) ? delta_down_relaxed : delta_up_relaxed;
-      highest_desired_curvature = SAFETY_MAX(curvature_state.desired_last - delta, highest_desired_curvature_error);
+    if (BP_HOST_CURVATURE_STATE.desired_last > highest_desired_curvature_error) {
+      const int delta = (BP_HOST_CURVATURE_STATE.desired_last >= 0) ? delta_down_relaxed : delta_up_relaxed;
+      highest_desired_curvature = SAFETY_MAX(BP_HOST_CURVATURE_STATE.desired_last - delta, highest_desired_curvature_error);
 
-    } else if (curvature_state.desired_last < lowest_desired_curvature_error) {
-      const int delta = (curvature_state.desired_last <= 0) ? delta_down_relaxed : delta_up_relaxed;
-      lowest_desired_curvature = SAFETY_MIN(curvature_state.desired_last + delta, lowest_desired_curvature_error);
+    } else if (BP_HOST_CURVATURE_STATE.desired_last < lowest_desired_curvature_error) {
+      const int delta = (BP_HOST_CURVATURE_STATE.desired_last <= 0) ? delta_down_relaxed : delta_up_relaxed;
+      lowest_desired_curvature = SAFETY_MIN(BP_HOST_CURVATURE_STATE.desired_last + delta, lowest_desired_curvature_error);
 
     } else {
       // already inside error boundary, don't allow commanding outside it
@@ -84,9 +84,9 @@ static inline bool ford_bp_curvature_cmd_checks(int desired_curvature, bool stee
                                                 const FordBpCurvatureLimits *limits) {
   bool violation = false;
 
-  speed_mismatch_check((float)vehicle_speed_2.values[0] / VEHICLE_SPEED_FACTOR);
+  BP_HOST_SPEED_MISMATCH_CHECK();
 
-  if ((controls_allowed || controls_allowed_lateral) && steer_control_enabled) {
+  if (BP_HOST_LAT_ALLOWED() && steer_control_enabled) {
     // BluePilot: curvature 0 is the no-curvature-command sentinel (angle mode steers with path_angle
     // and holds curvature at 0; curvature mode's reset frame sends 0), so the value checks don't
     // apply to it: the error band would trip as the car turns while the command stays at 0. The
@@ -100,9 +100,9 @@ static inline bool ford_bp_curvature_cmd_checks(int desired_curvature, bool stee
     }
 
     // *** real time rate limit check ***
-    violation |= rt_curvature_rate_limit_check(limits->base);
+    violation |= BP_HOST_RT_CURVATURE_RATE_CHECK(limits->base);
   }
-  curvature_state.desired_last = desired_curvature;
+  BP_HOST_CURVATURE_STATE.desired_last = desired_curvature;
 
   // Curvature must be 0 while not steering
   if (!steer_control_enabled) {
@@ -110,11 +110,11 @@ static inline bool ford_bp_curvature_cmd_checks(int desired_curvature, bool stee
   }
 
   // No curvature control allowed when controls are not allowed
-  violation |= !(controls_allowed || controls_allowed_lateral) && steer_control_enabled;
+  violation |= !BP_HOST_LAT_ALLOWED() && steer_control_enabled;
 
   // reset to zero (inactive_curvature_is_zero)
-  if (violation || !(controls_allowed || controls_allowed_lateral)) {
-    curvature_state.desired_last = 0;
+  if (violation || !BP_HOST_LAT_ALLOWED()) {
+    BP_HOST_CURVATURE_STATE.desired_last = 0;
   }
 
   return violation;

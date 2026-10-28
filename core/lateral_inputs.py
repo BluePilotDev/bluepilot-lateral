@@ -6,7 +6,7 @@ import math
 from itertools import chain
 from types import SimpleNamespace
 
-from opendbc.bluepilot_lateral.host_types import MODEL_PATH_POINTS
+from ..host_types import MODEL_PATH_POINTS
 
 
 def lateral_inputs_complete(li) -> bool:

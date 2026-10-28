@@ -1,9 +1,9 @@
 import unittest
 
-from opendbc.bluepilot_lateral.params import manifest
-from opendbc.bluepilot_lateral.params.manifest import SETTINGS, PER_FRAME_KEYS, startup_value, value
-from opendbc.bluepilot_lateral.params.param_store import ParamStore
-from opendbc.bluepilot_lateral.core.values_ext import BP_LATERAL_PARAMS
+from ..params import manifest
+from ..params.manifest import SETTINGS, PER_FRAME_KEYS, startup_value, value
+from ..params.param_store import ParamStore
+from ..core.values_ext import BP_LATERAL_PARAMS
 
 
 def _store(**kv):

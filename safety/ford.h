@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include "opendbc/bluepilot_lateral/safety/ford_declarations.h"
-#include "opendbc/bluepilot_lateral/safety/lateral.h"
+#include "../safety/ford_declarations.h"
+#include "../safety/lateral.h"
 
 // ===============================
 // Global Variables
@@ -19,7 +19,7 @@ const AngleSteeringParams *ford_bp_pinion_params = &ford_pinion_geometry[0];
 // BluePilot: per-platform geometry for pinion-angle -> curvature conversion (the optional
 // angle_meas source), selected by the 4-bit geometry index in current_safety_param_sp
 // bits 1-4. Row order and values must match FORD_PINION_GEOMETRY_INDEX in
-// opendbc/bluepilot_lateral/core/values_ext.py (enforced by test_ford_bluepilot_pinion.py's
+// bluepilot_lateral/core/values_ext.py (enforced by test_ford_bluepilot_pinion.py's
 // geometry test against CarSpecs + calc_slip_factor(VehicleModel(CP)), with the wheelbase
 // overrides in FORD_PINION_WHEELBASE applied).
 // Index 0 is reserved as invalid; ford_bp_init disables the feature outright on a zero or
@@ -122,12 +122,12 @@ static inline bool path_offset_cmd_checks(int desired_path_offset, bool steer_co
 // its only caller, ford_lmc_checks, passes the base of a BluePilot limit set (FORD_LIMITS, above
 // ford_bp_lmc_tx), all of which set it true pre-sync.
 static inline bool ford_shadow_curvature_error_check(int desired_curvature, bool steer_control_enabled,
-                                               const CurvatureSteeringLimits limits) {
+                                               const BP_HOST_CURVATURE_LIMITS limits) {
   bool violation = false;
   if (steer_control_enabled &&
       ((vehicle_speed.values[0] / VEHICLE_SPEED_FACTOR) > limits.curvature_error_min_speed)) {
-    int lowest_allowed = curvature_state.meas.min - limits.max_curvature_error - 1;
-    int highest_allowed = curvature_state.meas.max + limits.max_curvature_error + 1;
+    int lowest_allowed = BP_HOST_CURVATURE_STATE.meas.min - limits.max_curvature_error - 1;
+    int highest_allowed = BP_HOST_CURVATURE_STATE.meas.max + limits.max_curvature_error + 1;
     violation = safety_max_limit_check(desired_curvature, highest_allowed, lowest_allowed);
   }
   return violation;
@@ -186,7 +186,7 @@ static inline bool ford_lmc_checks(int desired_curvature, int desired_curvature_
     .frequency = 20U,               // Hz - 20Hz message rate
   };
 
-  const CurvatureSteeringLimits *base = &limits->base;
+  const BP_HOST_CURVATURE_LIMITS *base = &limits->base;
   bool violation = false;
 
   // Check curvature value limits (already converted to signed CAN units by the caller). Note:
@@ -254,13 +254,14 @@ static inline bool ford_lmc_checks(int desired_curvature, int desired_curvature_
   return violation;
 }
 
-// BluePilot: the curvature limit sets ford_bp_lmc_tx picks from: upstream's CurvatureSteeringLimits as
+// BluePilot: the curvature limit sets ford_bp_lmc_tx picks from: the host's BP_HOST_CURVATURE_LIMITS as
 // .base plus the measured rate tables, checked by ford_bp_curvature_cmd_checks instead of upstream's
 // ISO-jerk-derived delta. The values are the pre-sync macro's. max_curv_err is 100 (0.002) on the stock
 // yaw-sourced angle_meas path and 150 (0.003) on the pinion-sourced path (STEER_ANGLE_CURVATURE):
 // firmware uses the raw pinion angle, with no roll/alignment-offset compensation (the Python layer
 // compensates via liveParameters). ford_bp_curvature_cmd_checks assumes max_steer_power 0 and
-// inactive_curvature_is_zero true rather than reading them; they stay set to say what Ford is.
+// inactive_curvature_is_zero true rather than reading them, and base sets only the fields the library
+// reads, so it initializes upstream's CurvatureSteeringLimits and a host's narrower struct alike.
 #define FORD_LIMITS(limit_lateral_accel, max_curv_err) {                                         \
   .base = {                                                                                      \
     .max_curvature = 1000,          /* 0.02 curvature */                                         \
@@ -269,8 +270,6 @@ static inline bool ford_lmc_checks(int desired_curvature, int desired_curvature_
     .max_curvature_error = (max_curv_err),                                                       \
     /* no blending at low speed due to lack of torque wind-up and inaccurate current curvature */\
     .curvature_error_min_speed = 10.0,  /* m/s */                                                \
-    .max_steer_power = 0,           /* Ford has no steer power signal */                         \
-    .inactive_curvature_is_zero = true,                                                          \
   },                                                                                             \
   /* Down table 1% looser than up (#20); both >= the Python control's tables (values_ext) */     \
   .curvature_rate_up_lookup = {                                                                  \
@@ -318,7 +317,7 @@ static inline bool ford_bp_lmc_tx(bool canfd, unsigned int raw_curvature, unsign
 }
 
 // BluePilot: angle_mode_engaged and shadow_curvature ride in Lane_Assist_Data1 bits with no DBC
-// signal mapped to them (layout: opendbc/bluepilot_lateral/can/LANE_ASSIST_DATA1.md), read out of
+// signal mapped to them (layout: bluepilot_lateral/can/LANE_ASSIST_DATA1.md), read out of
 // the frame being sent. A separate CAN message (0x5F0)
 // was tried first: the panda never receives its own TX, and an RX check for it tripped
 // safety_tick's lagging check and blocked controls car-wide (2026-07-09).
@@ -335,7 +334,8 @@ static inline void ford_bp_lka_tx(const CANPacket_t *msg) {
 // same source when this is enabled (carcontroller_ext.InputTracker.get_current_curvature), so the layers always
 // agree. ford_rx_hook skips its yaw block while this source is on.
 static inline void ford_bp_rx_hook(const CANPacket_t *msg) {
-  if (msg_matches(msg, FORD_SteeringPinion_Data, FORD_MAIN_BUS) && ford_bp_pinion_curvature) {
+  // addr and bus compared directly, not with upstream's msg_matches, which not every host has
+  if ((msg->addr == FORD_SteeringPinion_Data) && (msg->bus == FORD_MAIN_BUS) && ford_bp_pinion_curvature) {
     // Signal: StePinComp_An_Est, 22|15@0+ (0.1,-1600) deg
     int angle_raw = ((msg->data[2] & 0x7FU) << 8) | msg->data[3];
     float pinion_angle_deg = ((float)angle_raw * 0.1f) - 1600.0f;
@@ -347,7 +347,7 @@ static inline void ford_bp_rx_hook(const CANPacket_t *msg) {
     float curvature_factor = get_curvature_factor(speed, *ford_bp_pinion_params);
     float current_curvature = pinion_angle_rad * curvature_factor / ford_bp_pinion_params->steer_ratio;
     // convert current curvature into units on CAN for comparison with desired curvature
-    update_sample(&curvature_state.meas, ROUND(current_curvature * FORD_STEERING_LIMITS.curvature_to_can));
+    update_sample(&BP_HOST_CURVATURE_STATE.meas, ROUND(current_curvature * FORD_STEERING_LIMITS.curvature_to_can));
   }
 }
 

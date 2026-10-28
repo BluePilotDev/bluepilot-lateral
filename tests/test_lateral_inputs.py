@@ -1,13 +1,13 @@
 import unittest
 
-from opendbc.car import structs
-from opendbc.bluepilot_lateral.core.carcontroller_ext import InputTracker
-from opendbc.bluepilot_lateral.core.values_ext import MODEL_T_IDXS
+from . import host
+from ..core.carcontroller_ext import InputTracker
+from ..core.values_ext import MODEL_T_IDXS
 
 
-def _cc_sp(valid=True):
-  cc_sp = structs.CarControlSP()
-  li = cc_sp.lateralInputs
+def _cc(valid=True):
+  cc = host.CarControlX()
+  li = cc.lateralInputs
   li.valid = valid
   li.pathYawRate = [0.01 * i for i in range(33)]
   li.pathX = [float(i) for i in range(33)]
@@ -24,7 +24,7 @@ def _cc_sp(valid=True):
   li.roll = 0.02
   li.angleOffsetDeg = 0.3
   li.lateralDelay = 0.12
-  return cc_sp
+  return cc
 
 
 class _FakeInputs:
@@ -43,7 +43,7 @@ class _FakeInputs:
 class TestInputTracker(unittest.TestCase):
   def test_model_view_has_modelv2_shape(self):
     ext = _FakeInputs()
-    InputTracker.update(ext, _cc_sp().lateralInputs)
+    InputTracker.update(ext, _cc().lateralInputs)
     m = ext.model
     self.assertEqual(len(m.orientationRate.z), 33)
     self.assertEqual(m.position.y[10], 1.0)
@@ -56,7 +56,7 @@ class TestInputTracker(unittest.TestCase):
 
   def test_vehicle_params_and_delay(self):
     ext = _FakeInputs()
-    InputTracker.update(ext, _cc_sp().lateralInputs)
+    InputTracker.update(ext, _cc().lateralInputs)
     self.assertEqual(ext.lp.angleOffsetDeg, 0.3)
     self.assertEqual(ext.lp.roll, 0.02)
     self.assertEqual(ext.lateral_delay, 0.12)
@@ -64,13 +64,13 @@ class TestInputTracker(unittest.TestCase):
 
   def test_invalid_inputs_leave_previous_values(self):
     ext = _FakeInputs()
-    InputTracker.update(ext, _cc_sp().lateralInputs)
-    InputTracker.update(ext, _cc_sp(valid=False).lateralInputs)
+    InputTracker.update(ext, _cc().lateralInputs)
+    InputTracker.update(ext, _cc(valid=False).lateralInputs)
     self.assertEqual(ext.lateral_delay, 0.12)
     self.assertIsNotNone(ext.model)
 
-  def test_default_cc_sp_is_not_valid(self):
-    self.assertFalse(structs.CarControlSP().lateralInputs.valid)
+  def test_default_cc_is_not_valid(self):
+    self.assertFalse(host.CarControlX().lateralInputs.valid)
 
   def test_t_idxs_matches_modeld(self):
     # openpilot ModelConstants: index_function(i, max_val=10.0) = 10 * (i/32)^2, 33 points
@@ -80,14 +80,14 @@ class TestInputTracker(unittest.TestCase):
     self.assertEqual(MODEL_T_IDXS[32], 10.0)
 
   def test_short_arrays_are_ignored_even_if_valid(self):
-    # fuzzed / partial CC_SP: valid=True but arrays not the modelV2 shape -> frame ignored
+    # fuzzed / partial host CarControl: valid=True but arrays not the modelV2 shape -> frame ignored
     ext = _FakeInputs()
-    InputTracker.update(ext, _cc_sp().lateralInputs)
-    bad = _cc_sp()
+    InputTracker.update(ext, _cc().lateralInputs)
+    bad = _cc()
     bad.lateralInputs.laneLineLeftY = []
     InputTracker.update(ext, bad.lateralInputs)
     self.assertEqual(ext.model.laneLines[1].y[0], -1.8)  # previous inputs kept
-    empty = _cc_sp()
+    empty = _cc()
     empty.lateralInputs.pathYawRate = [0.0] * 10
     InputTracker.update(_FakeInputs(), empty.lateralInputs)  # must not raise
     fresh = _FakeInputs()
@@ -99,9 +99,9 @@ class TestInputTracker(unittest.TestCase):
     for field, index in (("laneLineProbs", 1), ("laneLineStds", 2), ("pathYawRate", 5), ("pathY", 0), ("laneLineRightY", 32)):
       for bad_value in (float("nan"), float("inf")):
         ext = _FakeInputs()
-        InputTracker.update(ext, _cc_sp().lateralInputs)
+        InputTracker.update(ext, _cc().lateralInputs)
         model, lp = ext.model, ext.lp
-        bad = _cc_sp()
+        bad = _cc()
         values = list(getattr(bad.lateralInputs, field))
         values[index] = bad_value
         setattr(bad.lateralInputs, field, values)
@@ -110,8 +110,8 @@ class TestInputTracker(unittest.TestCase):
         self.assertIs(ext.lp, lp, field)
     for field in ("steerRatio", "lateralDelay"):
       ext = _FakeInputs()
-      InputTracker.update(ext, _cc_sp().lateralInputs)
-      bad = _cc_sp()
+      InputTracker.update(ext, _cc().lateralInputs)
+      bad = _cc()
       setattr(bad.lateralInputs, field, float("nan"))
       InputTracker.update(ext, bad.lateralInputs)
       self.assertEqual(ext.lp.steerRatio, 15.5, field)
