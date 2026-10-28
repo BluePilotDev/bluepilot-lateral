@@ -6,6 +6,7 @@ BluePilot's Ford lateral control as a library an opendbc fork mounts at `opendbc
 
 **Status:** `v0.1.1`. It runs on bp-sunnypilot, a sunnypilot fork, through BluePilotDev/opendbc (sunnypilot's opendbc plus the hooks).
 
+- [FORKS.md](FORKS.md): how a fork takes BluePilot lateral and works with BluePilot: carrying the library (a submodule or a stamped copy), the stamp tools, and adding a fork.
 - [HOSTS.md](HOSTS.md): what a host provides, the hook patch, and how to run the tests.
 - [can/LANE_ASSIST_DATA1.md](can/LANE_ASSIST_DATA1.md): the Lane_Assist_Data1 bits angle mode uses.
 - [CREDITS.md](CREDITS.md) and [LICENSE](LICENSE) (MIT).
