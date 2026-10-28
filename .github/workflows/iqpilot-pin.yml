@@ -120,7 +120,7 @@ jobs:
           note=" IQPilot now carries the hooks, so \`hooks.patch\` goes and CI tests IQPilot's tree as it is."
         fi
         git checkout -q -b "$branch"
-        git -c user.name="bluepilot-sync[bot]" -c user.email="bluepilot-sync[bot]@users.noreply.github.com" \
+        git -c user.name="bluepilot-sync[bot]" -c user.email="348581487+bluepilot-sync[bot]@users.noreply.github.com" \
           commit -qam "hosts/iqpilot: pin IQPilot beta ${HEAD_SHA:0:8}"
         if ! git ls-remote --exit-code "https://x-access-token:${GH_TOKEN}@github.com/$REPO.git" "refs/heads/$branch" >/dev/null; then
           git push -q "https://x-access-token:${GH_TOKEN}@github.com/$REPO.git" "$branch"
