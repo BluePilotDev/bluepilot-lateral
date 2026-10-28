@@ -56,7 +56,8 @@ test)
   # IQPilot's safety suite as its test.sh runs it (pytest: unittest also collects its base classes), the BluePilot
   # tests in the same run (its cross-mode TX sweep reads every Test* class it collects), minus IQPilot's own failures
   deselect=()
-  while read -r t; do deselect+=("--deselect=$t"); done < <(grep -v -e '^#' -e '^$' "$HERE/known_failures.txt")
+  # pytest names a test from its rootdir (iqdbc's project), not from the directory it runs in
+  while read -r t; do deselect+=("--deselect=iqdbc/safety/tests/$t"); done < <(grep -v -e '^#' -e '^$' "$HERE/known_failures.txt")
   cd iqdbc/safety/tests
   rm -f libsafety/*.gcda
   pytest -q -n8 --ignore-glob='misra/*' "${deselect[@]}" . ../../bluepilot_lateral/safety/tests
