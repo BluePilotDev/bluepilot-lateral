@@ -86,7 +86,7 @@ class TestVendorTools(unittest.TestCase):
           (self.copy / "core" / "a.py").unlink()
         r = self.check()
         self.assertEqual(r.returncode, 1, r.stdout)
-        self.assertIn("differs", r.stderr)
+        self.assertRegex(r.stderr, "differs")
 
 
 if __name__ == "__main__":
