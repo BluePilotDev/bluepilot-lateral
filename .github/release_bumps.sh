@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # A library release, through to a bp-sunnypilot PR (spec: ford-op/bg-opendbc#97). Bumps the library in
-# BluePilotDev/opendbc and merges that PR once its required checks pass (nothing else auto-merges there), then
+# ford-op/opendbc and merges that PR once its required checks pass (nothing else auto-merges there), then
 # opens the bp-sunnypilot PR that moves opendbc_repo to the new bp-opendbc, saying whether it changes the
 # panda firmware or the lateral Python (a drive before merge if so). Not merged automatically.
 # usage: GH_TOKEN=<bluepilot-sync App token for opendbc and bp-sunnypilot> release_bumps.sh <tag> <commit>
@@ -10,7 +10,7 @@ LIB=$(pwd)
 WORK=$(mktemp -d)
 git config --global user.name "bluepilot-sync[bot]"
 git config --global user.email "348581487+bluepilot-sync[bot]@users.noreply.github.com"
-OWNER=BluePilotDev  # where opendbc and bp-sunnypilot live
+OWNER=ford-op  # where opendbc and bp-sunnypilot live
 # the clones have no submodules checked out: a fetch that recursed into a moved gitlink would fail
 git config --global fetch.recurseSubmodules false
 clone() {  # <repo> <branch> <dir>: history and trees only, no checkout, index at HEAD
@@ -50,14 +50,14 @@ wait_required() {  # <pr>: until every required check has reported and passed; f
   echo "required checks didn't finish in 50 minutes"; return 1
 }
 
-# 1. BluePilotDev/opendbc: the library pointer, merged on green
+# 1. ford-op/opendbc: the library pointer, merged on green
 clone opendbc bp-opendbc "$WORK/bg"
 PIN=$(git -C "$WORK/bg" rev-parse HEAD:opendbc/bluepilot_lateral)
 if ! git -C "$LIB" merge-base --is-ancestor "$PIN" "$SHA"; then
-  echo "$TAG (${SHA:0:8}) isn't ahead of BluePilotDev/opendbc's pin ${PIN:0:8}: nothing to do"; exit 1
+  echo "$TAG (${SHA:0:8}) isn't ahead of ford-op/opendbc's pin ${PIN:0:8}: nothing to do"; exit 1
 fi
 if [ "$PIN" = "$SHA" ]; then
-  echo "BluePilotDev/opendbc already pins $TAG"
+  echo "ford-op/opendbc already pins $TAG"
   BG=$(git -C "$WORK/bg" rev-parse HEAD)
 else
   BRANCH="bump/library-$TAG"
@@ -70,7 +70,7 @@ else
 - [ ] CI \`safety\`
 - [ ] CI \`bluepilot-safety\`
 - [ ] CI \`bluepilot-hooks\`")
-  echo "BluePilotDev/opendbc: $PR"
+  echo "ford-op/opendbc: $PR"
   wait_required "$PR"
   gh pr view "$PR" --json body -q .body | sed 's/^- \[ \] CI/- [x] CI/' > "$WORK/body.md"
   gh pr edit "$PR" --body-file "$WORK/body.md"
@@ -85,7 +85,7 @@ clone bp-sunnypilot bp-sunnypilot "$WORK/sp"
 OLD=$(git -C "$WORK/sp" rev-parse HEAD:opendbc_repo)
 if [ "$OLD" = "$BG" ]; then echo "bp-sunnypilot already at ${BG:0:8}"; exit 0; fi
 OLDLIB=$(git -C "$WORK/bg" rev-parse "$OLD:opendbc/bluepilot_lateral")
-changed() {  # what moved: BluePilotDev/opendbc outside the library, then the library itself
+changed() {  # what moved: ford-op/opendbc outside the library, then the library itself
   git -C "$WORK/bg" diff --name-only "$OLD" "$BG" -- . ':!opendbc/bluepilot_lateral'
   git -C "$LIB" diff --name-only "$OLDLIB" "$SHA" | sed 's|^|opendbc/bluepilot_lateral/|'
 }
@@ -101,7 +101,7 @@ DRIVE=""
 BRANCH="opendbc/library-$TAG"
 bump "$WORK/sp" opendbc_repo "$BG" "$BRANCH" "opendbc_repo: bp-opendbc ${BG:0:8} (bluepilot-lateral $TAG)"
 open_pr bp-sunnypilot bp-sunnypilot "$BRANCH" "opendbc_repo: bluepilot-lateral $TAG" \
-"\`opendbc_repo\` moves to BluePilotDev/opendbc \`bp-opendbc\` ${BG:0:8}, which has bluepilot-lateral [$TAG](https://github.com/BluePilotDev/bluepilot-lateral/releases/tag/$TAG). Opened by the library's release job (ford-op/bg-opendbc#97); not merged automatically.
+"\`opendbc_repo\` moves to ford-op/opendbc \`bp-opendbc\` ${BG:0:8}, which has bluepilot-lateral [$TAG](https://github.com/BluePilotDev/bluepilot-lateral/releases/tag/$TAG). Opened by the library's release job (ford-op/bg-opendbc#97); not merged automatically.
 
 - Panda firmware (\`.h\`/\`.c\`) changed:
 $(list "$FW")

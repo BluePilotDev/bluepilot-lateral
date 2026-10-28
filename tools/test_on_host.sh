@@ -2,7 +2,7 @@
 # BluePilot: run the library's tests on a sunnypilot/opendbc checkout (HOSTS.md, #63), in a temporary
 # clone of it with this repo's library copied in and the hook patch applied. The host checkout itself
 # isn't touched. Uses this repo's Python environment; the working copy goes first on PYTHONPATH.
-# usage, in a BluePilotDev/opendbc checkout: opendbc/bluepilot_lateral/tools/test_on_host.sh <sunnypilot/opendbc checkout> [base]
+# usage, in a ford-op/opendbc checkout: opendbc/bluepilot_lateral/tools/test_on_host.sh <sunnypilot/opendbc checkout> [base]
 set -euo pipefail
 if [ $# -lt 1 ]; then
   echo "usage: $0 <sunnypilot/opendbc checkout> [base, default master]" >&2

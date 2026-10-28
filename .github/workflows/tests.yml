@@ -1,4 +1,4 @@
-# The library on sunnypilot/opendbc with BluePilotDev/opendbc's hook patch, through the checks it runs on
+# The library on sunnypilot/opendbc with ford-op/opendbc's hook patch, through the checks it runs on
 # it (spec: ford-op/bg-opendbc#83). Required on main as `./test.sh`, `safety` and `bluepilot-safety`:
 # keep the job names, and keep them running on every PR (a required check that doesn't run blocks the PR).
 name: tests
@@ -49,7 +49,7 @@ jobs:
         path: lib
     - uses: actions/checkout@v7
       with:
-        repository: BluePilotDev/opendbc
+        repository: ford-op/opendbc
         ref: bp-opendbc
         path: bg
         fetch-depth: 0  # the hook patch is a diff against the merge base with master
