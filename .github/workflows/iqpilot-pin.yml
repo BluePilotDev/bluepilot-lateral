@@ -2,7 +2,7 @@
 # hosts/iqpilot/host.sh, it builds and tests the library on the new head (host.sh tree + test, as the iqpilot job).
 # Green: a PR moving the pin (and dropping hooks.patch once IQPilot carries the hooks), merged by the job once the
 # library's required checks and the iqpilot job pass. Red: one standing issue saying which step failed; the pin stays
-# where it passed, and the job closes the issue once a later beta passes. Runs between BluePilotDev/opendbc's sync
+# where it passed, and the job closes the issue once a later beta passes. Runs between ford-op/opendbc's sync
 # (03:17) and bp-sunnypilot's (07:17). IQPilot's code (its setup.sh, build and tests) runs in its own job with no
 # secrets; the job with the App token starts on a fresh runner and a fresh checkout.
 name: iqpilot pin check

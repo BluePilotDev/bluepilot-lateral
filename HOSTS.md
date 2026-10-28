@@ -1,10 +1,10 @@
 # Hosting the BluePilot lateral
 
-A host is an opendbc fork with this library at `<pkg>/bluepilot_lateral/` and the hook patch applied, plus the openpilot on top of it that fills the library's inputs each frame. `<pkg>` is the fork's opendbc package: `opendbc` on sunnypilot/opendbc (BluePilotDev/opendbc, under bp-sunnypilot), `iqdbc` on IQ.Pilot. This page is what a host provides and what it gets back.
+A host is an opendbc fork with this library at `<pkg>/bluepilot_lateral/` and the hook patch applied, plus the openpilot on top of it that fills the library's inputs each frame. `<pkg>` is the fork's opendbc package: `opendbc` on sunnypilot/opendbc (ford-op/opendbc, under bp-sunnypilot), `iqdbc` on IQ.Pilot. This page is what a host provides and what it gets back.
 
 ## Mounting the library
 
-A host mounts this repo at `<pkg>/bluepilot_lateral/`, directly inside its opendbc package, as a git submodule (BluePilotDev/opendbc) or, in a host that takes no submodules (IQPilot, at `artifacts/package_sources/iqdbc/iqdbc/bluepilot_lateral/`), as a stamped copy of a release. Updating is a bump of the submodule's commit, or vendoring the new release (below). The hook patch below carries every file BluePilotDev/opendbc adds or changes outside the library, so since it mounts the library it also carries the mount's `.gitmodules` entry.
+A host mounts this repo at `<pkg>/bluepilot_lateral/`, directly inside its opendbc package, as a git submodule (ford-op/opendbc) or, in a host that takes no submodules (IQPilot, at `artifacts/package_sources/iqdbc/iqdbc/bluepilot_lateral/`), as a stamped copy of a release. Updating is a bump of the submodule's commit, or vendoring the new release (below). The hook patch below carries every file ford-op/opendbc adds or changes outside the library, so since it mounts the library it also carries the mount's `.gitmodules` entry.
 
 The library never names its host's package. Python imports are relative: the library's own modules by `.`/`..`, the host's opendbc by one more level (`from ...car.ford.values import CarControllerParams` in `core/`), and `tests/test_core_imports.py` fails on any absolute `opendbc`/`iqdbc`/`openpilot` import. Safety headers include each other as `../safety/<file>.h` and the host's declarations as `../../safety/declarations.h`, relative to the including file. The host includes the library's safety as `"<pkg>/bluepilot_lateral/safety/ford.h"`.
 
@@ -28,7 +28,7 @@ The limits struct needs only `max_curvature`, `curvature_to_can`, `frequency`, `
 
 ## The hook patch
 
-`tools/make_hook_patch.sh` prints it: every file outside the library that BluePilotDev/opendbc changes from `master`, minus its own `.github/` (its CI). It fails unless the edited files are exactly the non-`.github` entries of `.github/bluepilot-hooks.txt`.
+`tools/make_hook_patch.sh` prints it: every file outside the library that ford-op/opendbc changes from `master`, minus its own `.github/` (its CI). It fails unless the edited files are exactly the non-`.github` entries of `.github/bluepilot-hooks.txt`.
 
 | file | what the hook does |
 |---|---|
@@ -119,6 +119,6 @@ Another host writes its own adapter against the same API.
 ## Running the tests
 
 - Python tests: `python -m unittest discover -s <pkg>/bluepilot_lateral/tests -t .`, from the directory that holds `<pkg>`.
-- Safety tests: the host's `<pkg>/safety/tests/test.sh` runs them, through a loader (BluePilotDev/opendbc's `test_bluepilot_lateral.py`) or by naming `../../bluepilot_lateral/safety/tests` (IQ.Pilot: its cross-mode TX sweep reads `TX_MSGS` off every `Test*` class in its directory, so a loader there breaks it). Coverage of the BluePilot headers and `modes/ford.h`: `safety/tests/bluepilot_coverage.sh`, which runs the library's tests itself where the host has no loader; mutation: `safety/tests/bluepilot_mutation.py` (needs the host's `mutation.py`, which IQ.Pilot doesn't have).
-- On a clean sunnypilot/opendbc checkout: `tools/test_on_host.sh <checkout>`, from a BluePilotDev/opendbc checkout. It copies the library as committed and applies the hook patch to a temporary clone, then runs both.
+- Safety tests: the host's `<pkg>/safety/tests/test.sh` runs them, through a loader (ford-op/opendbc's `test_bluepilot_lateral.py`) or by naming `../../bluepilot_lateral/safety/tests` (IQ.Pilot: its cross-mode TX sweep reads `TX_MSGS` off every `Test*` class in its directory, so a loader there breaks it). Coverage of the BluePilot headers and `modes/ford.h`: `safety/tests/bluepilot_coverage.sh`, which runs the library's tests itself where the host has no loader; mutation: `safety/tests/bluepilot_mutation.py` (needs the host's `mutation.py`, which IQ.Pilot doesn't have).
+- On a clean sunnypilot/opendbc checkout: `tools/test_on_host.sh <checkout>`, from a ford-op/opendbc checkout. It copies the library as committed and applies the hook patch to a temporary clone, then runs both.
 - On IQPilot: `hosts/iqpilot/host.sh tree <dir>` builds iqdbc from IQ.Lvbs's repo at the pinned commit with `hosts/iqpilot/hooks.patch` (IQPilot's hooks, kept here until IQPilot carries them) and the library, vendored; `host.sh test <dir>` runs the library tests, IQPilot's safety suite with the BluePilot ones (minus `known_failures.txt`, IQPilot's own) and coverage; `host.sh make <dir>` writes the hook patch back after editing the hooks in `<dir>/host`. CI's `iqpilot` job runs tree and test. Every night `iqpilot pin check` tries IQ.Lvbs's latest `beta`: green moves the pin in a PR it merges itself (dropping `hooks.patch` once IQPilot carries the hooks), red keeps one issue open saying which step failed.
