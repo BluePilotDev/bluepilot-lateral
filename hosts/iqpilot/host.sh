@@ -3,7 +3,10 @@
 # commit pinned below, with IQPilot's hooks (hooks.patch, the files they change outside the library) and this
 # library at iqdbc/bluepilot_lateral/.
 #   host.sh tree <dir> [ref]  <dir>/iq: the IQPilot folders iqdbc's code imports; <dir>/host: iqdbc on its own, a git
-#                             repo with IQPilot as committed (first commit) and the hooks plus the library (second)
+#                             repo with IQPilot as committed (first commit) and the hooks plus this library, placed by
+#                             tools/vendor.sh (second). Writes <dir>/state: "not adopted" (the patch applied), "adopted"
+#                             (IQPilot already carries it, or there's no patch), or "drifted: ..." (and fails): the hooks
+#                             or IQPilot's copy of the library differ from what this repo has
 #   host.sh test <dir>        build <dir>/host and run the library tests, IQPilot's safety suite with the BluePilot
 #                             safety tests, and 100% line coverage of modes/ford.h and the library's safety headers
 #   host.sh make <dir>        write hooks.patch from <dir>/host: every change outside the library since IQPilot's
@@ -34,13 +37,25 @@ tree)
   git init -q
   git add -A
   git -c user.name=ci -c user.email=ci@localhost commit -q -m "IQPilot $(git -C "$DIR/iq" rev-parse --short HEAD)"
-  git apply "$HERE/hooks.patch"
-  mkdir -p iqdbc/bluepilot_lateral
-  git -C "$LIB" archive HEAD | tar -x -C iqdbc/bluepilot_lateral
-  rm -rf iqdbc/bluepilot_lateral/.github
+  state="adopted"
+  if [ -f "$HERE/hooks.patch" ]; then
+    if git apply --check "$HERE/hooks.patch" 2>/dev/null; then
+      git apply "$HERE/hooks.patch"
+      state="not adopted"
+    elif ! git apply --check --reverse "$HERE/hooks.patch" 2>/dev/null; then
+      state="drifted: hooks.patch neither applies nor is already in IQPilot (update it to what IQPilot carries: make)"
+    fi
+  fi
+  # IQPilot's own copy, once it carries one, has to be a release as vendored, before this library replaces it
+  if [ -f iqdbc/bluepilot_lateral/VERSION ] && ! "$LIB/tools/check_vendored.sh" iqdbc/bluepilot_lateral; then
+    state="drifted: IQPilot's copy of the library differs from the release in its VERSION"
+  fi
+  "$LIB/tools/vendor.sh" HEAD iqdbc/bluepilot_lateral
   git add -A
   git -c user.name=ci -c user.email=ci@localhost commit -q -m "hooks and library"
-  echo "IQPilot $(git -C "$DIR/iq" rev-parse --short HEAD), hook patch ($(grep -c '^diff --git' "$HERE/hooks.patch") files), library $(git -C "$LIB" rev-parse --short HEAD)"
+  echo "$state" > "$DIR/state"
+  echo "IQPilot $(git -C "$DIR/iq" rev-parse --short HEAD), hooks: $state, library $(git -C "$LIB" rev-parse --short HEAD)"
+  [[ "$state" != drifted* ]]
   ;;
 test)
   cd "$DIR/host"
