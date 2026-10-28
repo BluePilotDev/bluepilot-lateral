@@ -152,7 +152,8 @@ jobs:
         }
         rc=0; wait_checks || rc=$?
         case $rc in
-          0) gh pr merge "$pr" -R "$REPO" --squash --delete-branch --match-head-commit "$up"
+          0) gh pr merge "$pr" -R "$REPO" --squash --delete-branch --match-head-commit "$up" \
+               --body "Moves the IQPilot pin to beta ${HEAD_SHA:0:8}."  # its own message: the default adds the App as a co-author
              echo "merged #$pr"
              if [ -n "$issue" ]; then gh issue close "$issue" -R "$REPO" -c "IQPilot \`beta\` \`${HEAD_SHA:0:8}\` passes; the pin moved in #$pr."; fi ;;
           1) echo "::error::#$pr: a check failed; it stays open"; exit 1 ;;

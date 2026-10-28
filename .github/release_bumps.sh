@@ -74,7 +74,8 @@ else
   wait_required "$PR"
   gh pr view "$PR" --json body -q .body | sed 's/^- \[ \] CI/- [x] CI/' > "$WORK/body.md"
   gh pr edit "$PR" --body-file "$WORK/body.md"
-  gh pr merge "$PR" --squash --delete-branch
+  # its own message: with GitHub's default, a squash merge by the App adds the App as a co-author
+  gh pr merge "$PR" --squash --delete-branch --body "Moves the library to $TAG."
   BG=$(gh pr view "$PR" --json mergeCommit -q .mergeCommit.oid)
   git -C "$WORK/bg" fetch -q origin bp-opendbc
 fi
@@ -112,4 +113,4 @@ $(list "$LAT")
 - [ ] CI \`build macOS\`
 - [ ] CI \`static analysis\`
 - [ ] CI \`unit tests\`
-- [ ] CI \`process replay\`: only the known Ford segment differs (\`regen755D8CB1E1F\`, \`card\` \`sendcan\`)$DRIVE"
+- [ ] CI \`process replay\`: the Ford segment matches bp-sunnypilot's own reference, or the difference is explained$DRIVE"
