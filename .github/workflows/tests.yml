@@ -75,3 +75,18 @@ jobs:
         echo "host $BASE, hook patch ($(grep -c '^diff --git' hooks.patch) files), library $(git -C lib rev-parse --short HEAD)"
     - working-directory: host
       run: ${{ matrix.run }}
+
+  # The library on IQPilot (#18): iqdbc from IQ.Lvbs's repo at hosts/iqpilot/host.sh's pinned commit, with
+  # hosts/iqpilot/hooks.patch and this library. Not a required check (yet): IQPilot's side can break it.
+  iqpilot:
+    name: iqpilot
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        path: lib
+    - name: Host tree (IQPilot at the pin, hook patch, library)
+      run: lib/hosts/iqpilot/host.sh tree iq-host
+    - name: Library tests, safety suite, coverage
+      run: lib/hosts/iqpilot/host.sh test iq-host
