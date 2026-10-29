@@ -1,6 +1,6 @@
 # Hosting the BluePilot lateral
 
-A host is an opendbc fork with this library at `<pkg>/bluepilot_lateral/` and the hook patch applied, plus the openpilot on top of it that fills the library's inputs each frame. `<pkg>` is the fork's opendbc package: `opendbc` on sunnypilot/opendbc (ford-op/opendbc, under bp-sunnypilot), `iqdbc` on IQ.Pilot. This page is what a host provides and what it gets back.
+A host is an opendbc fork with this library at `<pkg>/bluepilot_lateral/` and the hook patch applied, plus the openpilot on top of it that fills the library's inputs each frame. `<pkg>` is the fork's opendbc package: `opendbc` on sunnypilot/opendbc (ford-op/opendbc, under bp-sunnypilot), `iqdbc` on IQ.Pilot, `opendbc` on StarPilot. This page is what a host provides and what it gets back.
 
 ## Mounting the library
 
@@ -62,7 +62,7 @@ Every key in `opendbc.bluepilot_lateral.core.values_ext.BP_LATERAL_PARAMS` (the 
 
 ## At startup: the safety bits
 
-`values_ext.ford_safety_param(CP, params_dict)` reads the startup settings (`disable_BP_lat_UI`, `FordPrefSteerAngleCurvature`) and returns the bits. The host sends them to the panda in its second safety param (sunnypilot: the adapter ORs them into `CP_SP.safetyParam`):
+`values_ext.ford_safety_param(CP, params_dict)` reads the startup settings (`disable_BP_lat_UI`, `FordPrefSteerAngleCurvature`) and returns the bits. The host sends them to the panda in its second safety param (sunnypilot: the adapter ORs them into `CP_SP.safetyParam`). StarPilot has no second param: its adapter shifts them into bits 9-14 of its Ford `safetyParam` (`hosts/starpilot/safety_param.py`, clear of the bits StarPilot's Ford safety reads), and its `ford_init` hands `(param >> 9) & 0x3F` to `ford_bp_init`:
 
 | bit | |
 |---|---|
@@ -113,6 +113,11 @@ Nothing under `core/`, `can/`, `params/` or `safety/` imports a host (`tests/tes
 
 - `lateral.py`: `BluePilotLateral(CP, CP_IQ, packer, CAN)` and `update(CC_IQ, frame)`, passing `CP_IQ.iqSafetyFlags`, `CC_IQ.lateralInputs` and the `CC_IQ.params` entries.
 - `safety_param.py`: `init_ford_safety_param_iq(CP, CP_IQ, params_dict)` ORs `ford_safety_param` into `CP_IQ.iqSafetyFlags` (the panda's `current_safety_param_iq`) and sets `CP_IQ.lateralInputsRequired`.
+
+`hosts/starpilot/`, for StarPilot, which has neither a second safety param nor CarControl / CarParams extension structs:
+
+- `lateral.py`: `BluePilotLateral(CP, packer, CAN)`, reading the startup bits back out of the Ford `safetyParam`, and `update(frame_inputs, frame)`. `FrameInputs` carries `lateralInputs` and the `params` entries; StarPilot's openpilot side fills one each frame and hands it to the Ford CarController, in place of a CarControl extension.
+- `safety_param.py`: `init_ford_safety_param_starpilot(CP, params_dict)` ORs `ford_safety_param << 9` into `CP.safetyConfigs[-1].safetyParam`; `bp_safety_param(CP)` reads them back; `lateral_inputs_required(CP)` says whether to fill `FrameInputs`. StarPilot's Transit (`FordFlags.LKA_STEERING`, steering through Lane_Assist_Data1 alone) gets neither.
 
 Another host writes its own adapter against the same API.
 

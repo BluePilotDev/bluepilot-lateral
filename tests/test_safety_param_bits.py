@@ -36,14 +36,12 @@ class TestSafetyParamBits(unittest.TestCase):
 
 
 class TestInitFordSafetyParamSp(unittest.TestCase):
-  """What the host adapter's init_ford_safety_param puts in its safety-param field at car init."""
+  """The startup bits the host adapter's car-init hook gives ford_bp_init."""
 
   def _param_sp(self, params_dict, brand="ford", fingerprint=CAR.FORD_F_150_MK14):
     CP = structs.CarParams()
     CP.brand, CP.carFingerprint = brand, fingerprint
-    CP_X = host.CarParamsX()
-    host.init_ford_safety_param(CP, CP_X, params_dict)
-    return getattr(CP_X, host.SAFETY_PARAM_FIELD)
+    return host.startup_bits(CP, params_dict)
 
   def test_bp_lateral_on_unless_disabled(self):
     self.assertEqual(self._param_sp({}), FordSafetyFlagsSP.BP_LATERAL)
@@ -68,15 +66,13 @@ class TestInitFordSafetyParamSp(unittest.TestCase):
 
 
 class TestLateralInputsRequired(unittest.TestCase):
-  """init_ford_safety_param tells the host to fill its CarControl's lateralInputs and the per-frame
+  """The host adapter tells the host to fill the per-frame lateralInputs and
   settings for every Ford, whether BluePilot lateral is on or off, and for no other brand."""
 
   def _required(self, params_dict, brand="ford"):
     CP = structs.CarParams()
     CP.brand, CP.carFingerprint = brand, CAR.FORD_F_150_MK14
-    CP_X = host.CarParamsX()
-    host.init_ford_safety_param(CP, CP_X, params_dict)
-    return CP_X.lateralInputsRequired
+    return host.lateral_inputs_required(CP, params_dict)
 
   def test_every_ford(self):
     self.assertTrue(self._required({}))

@@ -42,6 +42,7 @@ class BPLateralMatrixMixin:
   def setUp(self):
     self.safety = libsafety_py.libsafety
     host.set_safety_param(self.safety, self.PARAM_SP)
+    self.SAFETY_PARAM = host.ford_param(self.SAFETY_PARAM, self.PARAM_SP)  # StarPilot: the bits ride the Ford param
     super().setUp()  # stock setUp: packer, set_safety_hooks, init_tests
     self.model = BPFordLateralModel(self.CANFD, self.MAX_CURVATURE_ERROR_CAN_BP)
 

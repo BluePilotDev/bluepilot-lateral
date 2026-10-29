@@ -36,7 +36,7 @@ class TestFordBPLateralBit(unittest.TestCase):
   def _init(self, param_sp: int):
     h = self.h
     host.set_safety_param(h.safety, param_sp)
-    h.safety.set_safety_hooks(CarParams.SafetyModel.ford, FordSafetyFlags.CANFD)
+    h.safety.set_safety_hooks(CarParams.SafetyModel.ford, host.ford_param(FordSafetyFlags.CANFD, param_sp))
     h.safety.init_tests()
     h.safety.set_controls_allowed(True)
     h._reset_curvature_measurement(0, SPEED)
