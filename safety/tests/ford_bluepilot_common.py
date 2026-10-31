@@ -236,7 +236,7 @@ class BPFordTestCase(unittest.TestCase):
   def reinit(self):
     """A safety-mode init with the BP bit set (ford_init reads the bit)."""
     host.set_safety_param(self.safety, self.PARAM_SP)
-    self.safety.set_safety_hooks(CarParams.SafetyModel.ford, FordSafetyFlags.CANFD if self.CANFD else 0)
+    self.safety.set_safety_hooks(CarParams.SafetyModel.ford, host.ford_param(FordSafetyFlags.CANFD if self.CANFD else 0, self.PARAM_SP))
 
   # --- wrappers over upstream's builders ---
   def tx(self, msg) -> bool:
