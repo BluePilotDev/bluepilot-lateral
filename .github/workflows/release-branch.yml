@@ -48,4 +48,5 @@ jobs:
     - name: opendbc bump (merged on green), then the bp-sunnypilot PR
       env:
         GH_TOKEN: ${{ steps.app.outputs.token }}
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       run: .github/release_bumps.sh "$TAG" "$SHA"
