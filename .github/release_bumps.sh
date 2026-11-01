@@ -115,7 +115,7 @@ else
 fi
 BRANCH="opendbc/library-$TAG"
 bump "$WORK/sp" opendbc_repo "$BG" "$BRANCH" "opendbc_repo: bp-opendbc ${BG:0:8} (bluepilot-lateral $TAG)"
-open_pr bp-sunnypilot bp-sunnypilot "$BRANCH" "opendbc_repo: bluepilot-lateral $TAG" \
+PR=$(open_pr bp-sunnypilot bp-sunnypilot "$BRANCH" "opendbc_repo: bluepilot-lateral $TAG" \
 "\`opendbc_repo\` moves to ford-op/opendbc \`bp-opendbc\` ${BG:0:8}, which has bluepilot-lateral [$TAG](https://github.com/BluePilotDev/bluepilot-lateral/releases/tag/$TAG). Opened by the library's release job (ford-op/bg-opendbc#97); not merged automatically.
 
 - Panda firmware (\`.h\`/\`.c\`) changed:
@@ -130,4 +130,30 @@ $CLASS
 - [ ] CI \`build macOS\`
 - [ ] CI \`static analysis\`
 - [ ] CI \`unit tests\`
-- [ ] CI \`process replay\`: the Ford segment matches bp-sunnypilot's own reference, or the difference is explained$DRIVE"
+- [ ] CI \`process replay\`: the Ford segment matches bp-sunnypilot's own reference, or the difference is explained$DRIVE")
+
+# BluePilot: a plain-English review of the bump's F-150 impact and drive status, posted on the bump
+# PR. Fail-soft: it never blocks the release. Prompt: .github/bump-review-prompt.md.
+if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${PR:-}" ]; then
+  review_bump() {
+    npm install -g --silent @anthropic-ai/claude-code || return 0
+    {
+      cat "$(dirname "$0")/bump-review-prompt.md"
+      printf '\n## Diffs (non-test files changed by this bump)\n'
+      while IFS= read -r f; do
+        [ -z "$f" ] && continue
+        printf '\n### %s\n```diff\n' "$f"
+        case "$f" in
+          opendbc/bluepilot_lateral/*) git -C "$LIB" diff "$OLDLIB" "$SHA" -- "${f#opendbc/bluepilot_lateral/}" | head -200 ;;
+          *) git -C "$WORK/bg" diff "$OLD" "$BG" -- "$f" | head -200 ;;
+        esac
+        printf '```\n'
+      done <<<"$NOTESTS"
+    } > bump-prompt.md
+    claude -p "$(cat bump-prompt.md)" --max-turns 6 < /dev/null > bump-review.md || return 0
+    [ -s bump-review.md ] || return 0
+    { echo "<!-- bump-review $TAG -->"; cat bump-review.md; } > bump-comment.md
+    gh pr comment "$PR" --body-file bump-comment.md || return 0
+  }
+  review_bump || true
+fi
