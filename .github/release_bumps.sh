@@ -95,9 +95,24 @@ FW=$(grep -E '\.(h|c)$' <<<"$NOTESTS" || true)
 LAT=$(grep -E '^opendbc/(bluepilot_lateral|car/ford|sunnypilot/car/ford)/.*\.py$|^opendbc/car/(lateral|interfaces|structs)\.py$|^opendbc/sunnypilot/car/interfaces\.py$|^opendbc/dbc/ford' <<<"$NOTESTS" || true)
 # shellcheck disable=SC2016  # the backticks are Markdown, not expansions
 list() { if [ -n "$1" ]; then sed 's/^/  - `/; s/$/`/' <<<"$1"; else echo "  - none"; fi; }
-DRIVE=""
-[ -n "$FW$LAT" ] && DRIVE="
-- [ ] A drive (panda firmware or lateral Python changed)"
+# A drive is only for BluePilot's own Ford safety or F-150 lateral behaviour -- not upstream
+# firmware, other-platform rows or host-only files (upstream-only rides CI, per the drive rule).
+DRIVE_FW=$(grep -E '^opendbc/safety/modes/ford\.h$|^opendbc/bluepilot_lateral/safety/.*\.(h|c)$' <<<"$FW" || true)
+DRIVE_LAT=$(grep -E 'bluepilot_lateral/(can/fordcan_ext|lateral_angle_ext|carcontroller_ext)\.py$|^opendbc/car/ford/(carcontroller|fordcan)\.py$|^opendbc/dbc/ford' <<<"$LAT" || true)
+# core/values_ext.py holds per-platform tables; a drive only if a Ford F-150 row actually changed.
+if grep -q 'bluepilot_lateral/core/values_ext\.py$' <<<"$LAT" \
+   && git -C "$LIB" diff "$OLDLIB" "$SHA" -- core/values_ext.py | grep -qE '^[+-].*F_150'; then
+  DRIVE_LAT=$(printf '%s\nopendbc/bluepilot_lateral/core/values_ext.py\n' "$DRIVE_LAT")
+fi
+DRIVE_FILES=$(printf '%s\n%s\n' "$DRIVE_FW" "$DRIVE_LAT" | grep -v '^$' | sort -u || true)
+if [ -n "$DRIVE_FILES" ]; then
+  CLASS="Changes BluePilot's Ford safety or F-150 lateral, so this needs a drive before merge."
+  DRIVE="
+- [ ] A drive: BluePilot's Ford safety or F-150 lateral changed"
+else
+  CLASS="No BluePilot Ford safety or F-150 lateral change above (upstream firmware / other-platform / host-only), so this rides CI -- no drive."
+  DRIVE=""
+fi
 BRANCH="opendbc/library-$TAG"
 bump "$WORK/sp" opendbc_repo "$BG" "$BRANCH" "opendbc_repo: bp-opendbc ${BG:0:8} (bluepilot-lateral $TAG)"
 open_pr bp-sunnypilot bp-sunnypilot "$BRANCH" "opendbc_repo: bluepilot-lateral $TAG" \
@@ -107,6 +122,8 @@ open_pr bp-sunnypilot bp-sunnypilot "$BRANCH" "opendbc_repo: bluepilot-lateral $
 $(list "$FW")
 - Lateral Python or Ford DBC changed (outside tests):
 $(list "$LAT")
+
+$CLASS
 
 ## Validation
 - [ ] CI \`build release\`
