@@ -59,6 +59,14 @@ tree)
   ;;
 test)
   cd "$DIR/host"
+  # IQPilot's setup.sh installs mull from Cloudsmith, which has answered 402 since 2026-11-02; the same package from
+  # mull's GitHub release (what setup.sh uses on macOS). With mull-runner-18 present, setup.sh skips its install.
+  if [ "$(uname -s)" = Linux ] && ! command -v mull-runner-18 >/dev/null 2>&1; then
+    deb="Mull-18-0.26.1-LLVM-18.1-ubuntu-$(uname -m)-24.04.deb"
+    curl -sSL -o "$DIR/$deb" "https://github.com/mull-project/mull/releases/download/0.26.1/$deb"
+    sudo apt-get update -qq && sudo apt-get install -y -qq clang-18 "$DIR/$deb"
+    rm -f "$DIR/$deb"
+  fi
   set +u
   # shellcheck disable=SC1091 # IQPilot's: tools (clang-18 and mull on Linux, for the coverage build) and the venv
   source setup.sh
