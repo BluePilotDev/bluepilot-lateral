@@ -115,6 +115,7 @@ jobs:
         # red: one standing issue, rewritten each night; the pin stays where it passed
         if [ "$TREE" != success ] || [ "$TEST" != success ]; then
           web=$(sed -n 's/^REPO=//p' lib/hosts/iqpilot/host.sh | sed 's/\.git$//')
+          if [ "$TREE" != success ]; then step="the host tree (\`host.sh tree\`)"; else step="the tests (\`host.sh test\`)"; fi
           case "$TREE/$state" in
             success/*) what="The tree built and the hooks applied, but the tests failed (\`host.sh test\`): see the run. Fix what broke, or add a test IQPilot itself breaks to \`hosts/iqpilot/known_failures.txt\`." ;;
             */drifted:\ hooks.patch*) what="IQPilot changed one of the files the hook patch edits, so the patch no longer applies (IQPilot doesn't carry the hooks itself). Rebase the patch: in \`<dir>/host\`, \`git apply --reject hosts/iqpilot/hooks.patch\`, fix the \`.rej\` hunks by hand, then \`host.sh make <dir>\` rewrites \`hooks.patch\`." ;;
