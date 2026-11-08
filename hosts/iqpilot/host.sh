@@ -14,7 +14,7 @@
 set -euo pipefail
 
 REPO=https://gitlvb.teallvbs.xyz/IQ.Lvbs/IQ.Pilot.git
-PIN=c205e1a41dc3a8c860dff0bde87ac6b6744de5d2  # beta, 2026-11-02
+PIN=b589c8948b7293db3c5e730db20030096e4c21e6  # beta, 2026-11-07
 PROJECT=artifacts/package_sources/iqdbc        # iqdbc's own project: setup.sh, pyproject.toml, uv.lock
 IMPORTED="iqpilot/common iqpilot/cereal iqpilot/system iqpilot/selfdrive"  # imported by iqdbc's code and tests
 EXTRA_PACKAGES="pyserial setproctitle"          # imported too, but only in IQPilot's top-level lock
