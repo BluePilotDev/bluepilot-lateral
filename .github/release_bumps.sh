@@ -33,7 +33,8 @@ open_pr() {  # <repo> <base> <branch> <title> <body>: the branch's open PR, or a
 }
 # Each branch's required checks (its branch protection; the App can't read protection, so they're listed)
 BG_REQUIRED=("./test.sh (Linux)" "safety" "bluepilot-safety" "bluepilot-hooks")                                  # bp-opendbc
-SP_REQUIRED=("build release" "build macOS" "static analysis" "unit tests" "process replay" "install smoke")  # bp-sunnypilot
+# bp-sunnypilot; not "build macOS": GitHub's macOS runners often never pick the job up, and it isn't required there
+SP_REQUIRED=("build release" "static analysis" "unit tests" "process replay" "install smoke")
 wait_required() {  # <pr> <check>...: until every listed check has reported and passed; fails on the first failure
   local pr=$1 out n state
   shift
@@ -114,7 +115,6 @@ A pin bump takes no drive of its own: a change that needs one was driven before 
 
 ## Validation
 - [ ] CI \`build release\`
-- [ ] CI \`build macOS\`
 - [ ] CI \`static analysis\`
 - [ ] CI \`unit tests\`
 - [ ] CI \`process replay\`: the Ford segment matches bp-sunnypilot's own reference, or the difference is explained
