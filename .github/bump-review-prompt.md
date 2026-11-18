@@ -9,7 +9,7 @@ Write the comment in Markdown, in exactly this shape:
 1. The first line is the verdict, starting with one mark:
    - `✅ No F-150 change.` followed by one sentence naming what the changes are.
    - `⚠️ Changes the F-150:` followed by which file changes BluePilot's Ford safety or F-150 lateral, and how.
-   Use `⚠️` if any row has it.
+   Use `⚠️` if any row has it. The release job merges the PR on green CI only when the verdict is `✅`, so when in doubt use `⚠️`.
 2. A blank line, then one table, a row per non-test file changed:
 
    | | File | What it changes | F-150 impact |
