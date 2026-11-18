@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # A library release, through to a bp-sunnypilot PR (spec: ford-op/bg-opendbc#97). Bumps the library in
 # ford-op/opendbc and merges that PR once its required checks pass (nothing else auto-merges there), then
-# opens the bp-sunnypilot PR that moves opendbc_repo to the new bp-opendbc, saying whether it changes the
-# panda firmware or the lateral Python (a drive before merge if so). Not merged automatically.
+# opens the bp-sunnypilot PR that moves opendbc_repo to the new bp-opendbc, listing the panda firmware and
+# lateral Python it changes. A pin bump never asks for a drive: that happens before the change merges into the
+# library. Not merged automatically.
 # usage: GH_TOKEN=<bluepilot-sync App token for opendbc and bp-sunnypilot> release_bumps.sh <tag> <commit>
 set -euo pipefail
 TAG=$1 SHA=$2
@@ -95,24 +96,8 @@ FW=$(grep -E '\.(h|c)$' <<<"$NOTESTS" || true)
 LAT=$(grep -E '^opendbc/(bluepilot_lateral|car/ford|sunnypilot/car/ford)/.*\.py$|^opendbc/car/(lateral|interfaces|structs)\.py$|^opendbc/sunnypilot/car/interfaces\.py$|^opendbc/dbc/ford' <<<"$NOTESTS" || true)
 # shellcheck disable=SC2016  # the backticks are Markdown, not expansions
 list() { if [ -n "$1" ]; then sed 's/^/  - `/; s/$/`/' <<<"$1"; else echo "  - none"; fi; }
-# A drive is only for BluePilot's own Ford safety or F-150 lateral behaviour -- not upstream
-# firmware, other-platform rows or host-only files (upstream-only rides CI, per the drive rule).
-DRIVE_FW=$(grep -E '^opendbc/safety/modes/ford\.h$|^opendbc/bluepilot_lateral/safety/.*\.(h|c)$' <<<"$FW" || true)
-DRIVE_LAT=$(grep -E 'bluepilot_lateral/(can/fordcan_ext|lateral_angle_ext|carcontroller_ext)\.py$|^opendbc/car/ford/(carcontroller|fordcan)\.py$|^opendbc/dbc/ford' <<<"$LAT" || true)
-# core/values_ext.py holds per-platform tables; a drive only if a Ford F-150 row actually changed.
-if grep -q 'bluepilot_lateral/core/values_ext\.py$' <<<"$LAT" \
-   && git -C "$LIB" diff "$OLDLIB" "$SHA" -- core/values_ext.py | grep -qE '^[+-].*F_150'; then
-  DRIVE_LAT=$(printf '%s\nopendbc/bluepilot_lateral/core/values_ext.py\n' "$DRIVE_LAT")
-fi
-DRIVE_FILES=$(printf '%s\n%s\n' "$DRIVE_FW" "$DRIVE_LAT" | grep -v '^$' | sort -u || true)
-if [ -n "$DRIVE_FILES" ]; then
-  CLASS="Changes BluePilot's Ford safety or F-150 lateral, so this needs a drive before merge."
-  DRIVE="
-- [ ] A drive: BluePilot's Ford safety or F-150 lateral changed"
-else
-  CLASS="No BluePilot Ford safety or F-150 lateral change above (upstream firmware / other-platform / host-only), so this rides CI -- no drive."
-  DRIVE=""
-fi
+# No drive is asked for here: a change that needs one is driven before it merges into the library (or
+# into ford-op/opendbc), not when a pin moves to it. The lists say what the bump carries.
 BRANCH="opendbc/library-$TAG"
 bump "$WORK/sp" opendbc_repo "$BG" "$BRANCH" "opendbc_repo: bp-opendbc ${BG:0:8} (bluepilot-lateral $TAG)"
 PR=$(open_pr bp-sunnypilot bp-sunnypilot "$BRANCH" "opendbc_repo: bluepilot-lateral $TAG" \
@@ -123,16 +108,16 @@ $(list "$FW")
 - Lateral Python or Ford DBC changed (outside tests):
 $(list "$LAT")
 
-$CLASS
+A pin bump takes no drive of its own: a change that needs one was driven before it merged into the library or ford-op/opendbc. This rides CI.
 
 ## Validation
 - [ ] CI \`build release\`
 - [ ] CI \`build macOS\`
 - [ ] CI \`static analysis\`
 - [ ] CI \`unit tests\`
-- [ ] CI \`process replay\`: the Ford segment matches bp-sunnypilot's own reference, or the difference is explained$DRIVE")
+- [ ] CI \`process replay\`: the Ford segment matches bp-sunnypilot's own reference, or the difference is explained")
 
-# BluePilot: a plain-English review of the bump's F-150 impact and drive status, posted on the bump
+# BluePilot: a plain-English review of the bump's F-150 impact, posted on the bump
 # PR. Fail-soft: it never blocks the release. Prompt: .github/bump-review-prompt.md.
 if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${PR:-}" ]; then
   review_bump() {
