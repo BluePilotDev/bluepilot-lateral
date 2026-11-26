@@ -1,8 +1,8 @@
 # Moves the `release` branch to each published release's commit (fast-forward only: a release that
 # isn't ahead of `release` fails here instead of rewriting the branch), then carries the release to
 # bp-sunnypilot (.github/release_bumps.sh, spec ford-op/bg-opendbc#97): ford-op/opendbc's bump PR, merged
-# here once its required checks pass, and a bp-sunnypilot PR, merged on green too when its review finds no
-# F-150 change and left for review otherwise. A manual run takes the tag.
+# here once its required checks pass, and a bp-sunnypilot PR, merged on green too unless Ford code
+# changed outside the library, and left for a maintainer then (#55). A manual run takes the tag.
 name: release branch
 
 on:
@@ -46,7 +46,7 @@ jobs:
         private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
         owner: ford-op
         repositories: opendbc,bp-sunnypilot
-    - name: opendbc bump (merged on green), then the bp-sunnypilot PR (merged on green if no F-150 change)
+    - name: opendbc bump (merged on green), then the bp-sunnypilot PR (merged on green unless Ford code changed outside the library)
       env:
         GH_TOKEN: ${{ steps.app.outputs.token }}
         CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

@@ -3,9 +3,24 @@
 # ford-op/opendbc and merges that PR once its required checks pass (nothing else auto-merges there), then
 # opens the bp-sunnypilot PR that moves opendbc_repo to the new bp-opendbc, listing the panda firmware and
 # lateral Python it changes. A pin bump never asks for a drive: that happens before the change merges into the
-# library. That PR is merged on green too when its review comment finds no F-150 change; otherwise it waits.
+# library. That PR is merged on green too unless the pin range carries Ford code from outside the library
+# (sunnypilot's opendbc through the nightly sync, or a hook change): then it waits for a maintainer (#55).
 # usage: GH_TOKEN=<bluepilot-sync App token for opendbc and bp-sunnypilot> release_bumps.sh <tag> <commit>
 set -euo pipefail
+# Ford code outside the library, tests aside: the files that hold the bp-sunnypilot bump for a maintainer (#55).
+# stdin: paths that moved outside opendbc/bluepilot_lateral. Upstream panda firmware other than Ford's mode rides CI.
+outside_ford() {
+  grep -v '/tests/' | grep -E '^opendbc/(car/ford|sunnypilot/car/ford)/|^opendbc/car/(lateral|interfaces|structs)\.py$|^opendbc/sunnypilot/car/interfaces\.py$|^opendbc/dbc/.*[Ff][Oo][Rr][Dd]|^opendbc/safety/modes/ford' || true
+}
+if [ "${1:-}" = --self-test ]; then
+  t() { [ "$(printf '%s\n' "$2" | outside_ford)" = "$1" ] || { echo "self-test failed: $2"; exit 1; }; }
+  for f in opendbc/car/ford/carcontroller.py opendbc/car/ford/values.py opendbc/sunnypilot/car/ford/x.py opendbc/car/interfaces.py \
+           opendbc/car/structs.py opendbc/car/lateral.py opendbc/sunnypilot/car/interfaces.py opendbc/dbc/ford_lincoln_base_pt.dbc \
+           opendbc/dbc/generator/ford/x.dbc opendbc/dbc/FORD_CADS.dbc opendbc/safety/modes/ford.h; do t "$f" "$f"; done
+  for f in opendbc/car/hyundai/values.py opendbc/car/ford/tests/test_ford.py opendbc/safety/tests/test_ford.py opendbc/safety/safety.h \
+           opendbc/sunnypilot/car/car_list.json opendbc/car/tests/routes.py .github/bluepilot-hooks.txt; do t "" "$f"; done
+  echo "self-test ok"; exit 0
+fi
 TAG=$1 SHA=$2
 LIB=$(pwd)
 WORK=$(mktemp -d)
@@ -96,7 +111,9 @@ changed() {  # what moved: ford-op/opendbc outside the library, then the library
 FILES=$(changed)
 NOTESTS=$(grep -v '/tests/' <<<"$FILES" || true)
 FW=$(grep -E '\.(h|c)$' <<<"$NOTESTS" || true)
-LAT=$(grep -E '^opendbc/(bluepilot_lateral|car/ford|sunnypilot/car/ford)/.*\.py$|^opendbc/car/(lateral|interfaces|structs)\.py$|^opendbc/sunnypilot/car/interfaces\.py$|^opendbc/dbc/ford' <<<"$NOTESTS" || true)
+# --no-renames: a Ford file moved out of these paths lists its old path, so it still holds
+OUTSIDE=$(git -C "$WORK/bg" diff --name-only --no-renames "$OLD" "$BG" -- . ':!opendbc/bluepilot_lateral' | outside_ford)
+LAT=$(grep -E '^opendbc/(bluepilot_lateral|car/ford|sunnypilot/car/ford)/.*\.py$|^opendbc/car/(lateral|interfaces|structs)\.py$|^opendbc/sunnypilot/car/interfaces\.py$|^opendbc/dbc/.*[Ff][Oo][Rr][Dd]' <<<"$NOTESTS" || true)
 # shellcheck disable=SC2016  # the backticks are Markdown, not expansions
 list() { if [ -n "$1" ]; then sed 's/^/  - `/; s/$/`/' <<<"$1"; else echo "  - none"; fi; }
 # No drive is asked for here: a change that needs one is driven before it merges into the library (or
@@ -104,8 +121,10 @@ list() { if [ -n "$1" ]; then sed 's/^/  - `/; s/$/`/' <<<"$1"; else echo "  - n
 BRANCH="opendbc/library-$TAG"
 bump "$WORK/sp" opendbc_repo "$BG" "$BRANCH" "opendbc_repo: bp-opendbc ${BG:0:8} (bluepilot-lateral $TAG)"
 PR=$(open_pr bp-sunnypilot bp-sunnypilot "$BRANCH" "opendbc_repo: bluepilot-lateral $TAG" \
-"\`opendbc_repo\` moves to ford-op/opendbc \`bp-opendbc\` ${BG:0:8}, which has bluepilot-lateral [$TAG](https://github.com/BluePilotDev/bluepilot-lateral/releases/tag/$TAG). Opened by the library's release job (ford-op/bg-opendbc#97), which merges it once the required checks pass if its review comment finds no F-150 change; otherwise it waits for a maintainer.
+"\`opendbc_repo\` moves to ford-op/opendbc \`bp-opendbc\` ${BG:0:8}, which has bluepilot-lateral [$TAG](https://github.com/BluePilotDev/bluepilot-lateral/releases/tag/$TAG). Opened by the library's release job (ford-op/bg-opendbc#97), which merges it once the required checks pass unless Ford code changed outside the library (BluePilotDev/bluepilot-lateral#55); then it waits for a maintainer.
 
+- Ford code changed outside the library (from sunnypilot's opendbc or a hook change; any entry here holds the merge):
+$(list "$OUTSIDE")
 - Panda firmware (\`.h\`/\`.c\`) changed:
 $(list "$FW")
 - Lateral Python or Ford DBC changed (outside tests):
@@ -121,10 +140,8 @@ A pin bump takes no drive of its own: a change that needs one was driven before 
 - [ ] CI \`install smoke\`")
 SP_HEAD=$(git -C "$WORK/sp" rev-parse HEAD)
 
-# BluePilot: a plain-English review of the bump's F-150 impact, posted on the bump
-# PR. Fail-soft: it never blocks the release. Prompt: .github/bump-review-prompt.md.
-rm -f bump-review.md
-TRUNCATED=""  # a diff cut at 200 lines: the review didn't see all of it
+# BluePilot: a plain-English review of what the bump changes for Ford cars, posted on the bump PR as
+# information. It decides nothing (#55), and it never blocks the release. Prompt: .github/bump-review-prompt.md.
 if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${PR:-}" ]; then
   review_bump() {
     npm install -g --silent @anthropic-ai/claude-code || return 0
@@ -138,7 +155,6 @@ if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${PR:-}" ]; then
           opendbc/bluepilot_lateral/*) git -C "$LIB" diff "$OLDLIB" "$SHA" -- "${f#opendbc/bluepilot_lateral/}" > bump-file.diff ;;
           *) git -C "$WORK/bg" diff "$OLD" "$BG" -- "$f" > bump-file.diff ;;
         esac
-        [ "$(wc -l < bump-file.diff)" -gt 200 ] && TRUNCATED="$TRUNCATED $f"
         head -200 bump-file.diff
         printf '```\n'
       done <<<"$NOTESTS"
@@ -146,22 +162,21 @@ if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${PR:-}" ]; then
     claude -p "$(cat bump-prompt.md)" --max-turns 6 < /dev/null > bump-review.md || return 0
     [ -s bump-review.md ] || return 0
     { echo "<!-- bump-review $TAG -->"; cat bump-review.md; } > bump-comment.md
-    # a review nobody can read doesn't count: without the comment the PR waits for a maintainer
-    gh pr comment "$PR" --body-file bump-comment.md || { rm -f bump-review.md; return 0; }
+    gh pr comment "$PR" --body-file bump-comment.md || return 0
   }
   review_bump || true
 fi
 
-# 3. Merged on green when the review found no F-150 change: its verdict line starts with the green mark, it
-# saw every diff in full, and bp-sunnypilot's required checks pass. Anything else waits for a maintainer.
-if [ -s bump-review.md ] && [ -z "$TRUNCATED" ] && head -1 bump-review.md | grep -q '^✅'; then
+# 3. Merged on green unless Ford code moved outside the library. The library's own changes were reviewed, and
+# driven where needed, before they merged; what the nightly sync brought from sunnypilot was not (#55).
+if [ -z "$OUTSIDE" ]; then
   wait_required "$PR" "${SP_REQUIRED[@]}"
   gh pr view "$PR" --json body -q .body | sed 's/^- \[ \] CI/- [x] CI/' > "$WORK/body.md"
   gh pr edit "$PR" --body-file "$WORK/body.md"
-  # only the commit this job pushed: a later push to the branch isn't what was reviewed
+  # only the commit this job pushed: a later push to the branch isn't what the path check saw
   gh pr merge "$PR" --squash --delete-branch --match-head-commit "$SP_HEAD" --subject "opendbc_repo: bluepilot-lateral $TAG" \
-    --body "opendbc_repo moves to ford-op/opendbc bp-opendbc ${BG:0:8} (bluepilot-lateral $TAG). No F-150 change; merged on green."
+    --body "opendbc_repo moves to ford-op/opendbc bp-opendbc ${BG:0:8} (bluepilot-lateral $TAG). No Ford change from outside the library; merged on green."
   echo "bp-sunnypilot: merged $PR"
 else
-  echo "bp-sunnypilot: $PR waits for a maintainer (no review, a cut diff, or a change for the F-150)"
+  echo "bp-sunnypilot: $PR waits for a maintainer (Ford code changed outside the library: $(tr '\n' ' ' <<<"$OUTSIDE"))"
 fi
