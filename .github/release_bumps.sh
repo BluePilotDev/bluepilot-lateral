@@ -10,13 +10,13 @@ set -euo pipefail
 # Ford code outside the library, tests aside: the files that hold the bp-sunnypilot bump for a maintainer (#55).
 # stdin: paths that moved outside opendbc/bluepilot_lateral. Upstream panda firmware other than Ford's mode rides CI.
 outside_ford() {
-  grep -v '/tests/' | grep -E '^opendbc/(car/ford|sunnypilot/car/ford)/|^opendbc/car/(lateral|interfaces|structs)\.py$|^opendbc/sunnypilot/car/interfaces\.py$|^opendbc/dbc/.*ford|^opendbc/safety/modes/ford' || true
+  grep -v '/tests/' | grep -E '^opendbc/(car/ford|sunnypilot/car/ford)/|^opendbc/car/(lateral|interfaces|structs)\.py$|^opendbc/sunnypilot/car/interfaces\.py$|^opendbc/dbc/.*[Ff][Oo][Rr][Dd]|^opendbc/safety/modes/ford' || true
 }
 if [ "${1:-}" = --self-test ]; then
   t() { [ "$(printf '%s\n' "$2" | outside_ford)" = "$1" ] || { echo "self-test failed: $2"; exit 1; }; }
   for f in opendbc/car/ford/carcontroller.py opendbc/car/ford/values.py opendbc/sunnypilot/car/ford/x.py opendbc/car/interfaces.py \
            opendbc/car/structs.py opendbc/car/lateral.py opendbc/sunnypilot/car/interfaces.py opendbc/dbc/ford_lincoln_base_pt.dbc \
-           opendbc/dbc/generator/ford/x.dbc opendbc/safety/modes/ford.h; do t "$f" "$f"; done
+           opendbc/dbc/generator/ford/x.dbc opendbc/dbc/FORD_CADS.dbc opendbc/safety/modes/ford.h; do t "$f" "$f"; done
   for f in opendbc/car/hyundai/values.py opendbc/car/ford/tests/test_ford.py opendbc/safety/tests/test_ford.py opendbc/safety/safety.h \
            opendbc/sunnypilot/car/car_list.json opendbc/car/tests/routes.py .github/bluepilot-hooks.txt; do t "" "$f"; done
   echo "self-test ok"; exit 0
@@ -111,8 +111,9 @@ changed() {  # what moved: ford-op/opendbc outside the library, then the library
 FILES=$(changed)
 NOTESTS=$(grep -v '/tests/' <<<"$FILES" || true)
 FW=$(grep -E '\.(h|c)$' <<<"$NOTESTS" || true)
-OUTSIDE=$(git -C "$WORK/bg" diff --name-only "$OLD" "$BG" -- . ':!opendbc/bluepilot_lateral' | outside_ford)
-LAT=$(grep -E '^opendbc/(bluepilot_lateral|car/ford|sunnypilot/car/ford)/.*\.py$|^opendbc/car/(lateral|interfaces|structs)\.py$|^opendbc/sunnypilot/car/interfaces\.py$|^opendbc/dbc/ford' <<<"$NOTESTS" || true)
+# --no-renames: a Ford file moved out of these paths lists its old path, so it still holds
+OUTSIDE=$(git -C "$WORK/bg" diff --name-only --no-renames "$OLD" "$BG" -- . ':!opendbc/bluepilot_lateral' | outside_ford)
+LAT=$(grep -E '^opendbc/(bluepilot_lateral|car/ford|sunnypilot/car/ford)/.*\.py$|^opendbc/car/(lateral|interfaces|structs)\.py$|^opendbc/sunnypilot/car/interfaces\.py$|^opendbc/dbc/.*[Ff][Oo][Rr][Dd]' <<<"$NOTESTS" || true)
 # shellcheck disable=SC2016  # the backticks are Markdown, not expansions
 list() { if [ -n "$1" ]; then sed 's/^/  - `/; s/$/`/' <<<"$1"; else echo "  - none"; fi; }
 # No drive is asked for here: a change that needs one is driven before it merges into the library (or
@@ -141,7 +142,6 @@ SP_HEAD=$(git -C "$WORK/sp" rev-parse HEAD)
 
 # BluePilot: a plain-English review of what the bump changes for Ford cars, posted on the bump PR as
 # information. It decides nothing (#55), and it never blocks the release. Prompt: .github/bump-review-prompt.md.
-rm -f bump-review.md
 if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${PR:-}" ]; then
   review_bump() {
     npm install -g --silent @anthropic-ai/claude-code || return 0
@@ -173,7 +173,7 @@ if [ -z "$OUTSIDE" ]; then
   wait_required "$PR" "${SP_REQUIRED[@]}"
   gh pr view "$PR" --json body -q .body | sed 's/^- \[ \] CI/- [x] CI/' > "$WORK/body.md"
   gh pr edit "$PR" --body-file "$WORK/body.md"
-  # only the commit this job pushed: a later push to the branch isn't what was reviewed
+  # only the commit this job pushed: a later push to the branch isn't what the path check saw
   gh pr merge "$PR" --squash --delete-branch --match-head-commit "$SP_HEAD" --subject "opendbc_repo: bluepilot-lateral $TAG" \
     --body "opendbc_repo moves to ford-op/opendbc bp-opendbc ${BG:0:8} (bluepilot-lateral $TAG). No Ford change from outside the library; merged on green."
   echo "bp-sunnypilot: merged $PR"
