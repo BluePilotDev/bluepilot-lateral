@@ -323,13 +323,17 @@ class TestLaneCenterTrim(unittest.TestCase):
 
   def test_lanefull_off_is_the_untrusted_lines_result(self):
     # Whatever the lane lines say, Lanefull off steers exactly as if they couldn't be trusted (scale 0).
-    lines = {"clear, 2 m off the model's path": _good_model(lane_center_y=2.0, model_y=0.0),
-             "one line": _one_sided_model(), "none": _no_lanelines_model()}
+    off_path = {"clear, 2 m off the model's path": _good_model(lane_center_y=2.0, model_y=0.0),
+                "partly trusted, 2 m off the model's path": _good_model(lane_center_y=2.0, model_y=0.0, probs=(0.9, 0.6, 0.6, 0.9))}
+    lines = {**off_path, "one line": _one_sided_model(), "none": _no_lanelines_model()}
     for offset in (0.0, 0.3):
       untrusted = self._trace(_no_lanelines_model(), offset)
       for name, model in lines.items():
         with self.subTest(lines=name, offset=offset):
           self.assertEqual(self._trace(model, offset, lane_full=False), untrusted)
+      for name, model in off_path.items():  # these lines do steer with Lanefull on, so the check above can fail
+        with self.subTest(lines=name, offset=offset, lane_full=True):
+          self.assertNotEqual(self._trace(model, offset), untrusted)
 
   def test_lanefull_off_zero_offset_no_correction(self):
     self._run(_good_model(lane_center_y=2.0, model_y=0.0), offset=0.0, lane_full=False, iterations=500)
