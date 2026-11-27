@@ -19,8 +19,9 @@ clamp / soft ROC below -- so it inherits every one of those limiters automatical
 bypassing them. Blends toward lane-line center by confidence (same formula as
 ``lateral_curv_ext``'s ``path_offset``) and falls back to the model's own predicted path -- not
 to zero -- when lines are missing/unreliable, so the user's left/right offset still applies on
-center-stripe-only roads. Disabled during lane changes, user-tunable (enable, offset, authority)
-via ``enable_lane_positioning_ang`` / ``custom_path_offset_ang`` / ``lane_centering_strength_ang``.
+center-stripe-only roads. Disabled during lane changes, user-tunable (enable, offset, authority, Lanefull)
+via ``enable_lane_positioning_ang`` / ``custom_path_offset_ang`` / ``lane_centering_strength_ang`` /
+``enable_lane_full_mode_ang`` (off: the lane lines are ignored and only the offset applies).
 
 **Human-turn override**: while the driver manually turns (same sustained-press + angle criteria
 as ``lateral_curv_ext``, via the shared ``HumanTurnDetector``), lateral is forced inactive (mode
@@ -133,6 +134,7 @@ ANGLE_SETTINGS = (
   ("user_dampening_factor", "FordHighSpeedDampening_ang"),
   ("lane_change_factor_high_ang", "lane_change_factor_high_ang"),
   ("enable_lane_positioning_ang", "enable_lane_positioning_ang"),  # the lane centering trim (lane_center_trim.py)
+  ("enable_lane_full_mode_ang", "enable_lane_full_mode_ang"),  # off: the trim ignores the lane lines (offset only)
   ("custom_path_offset_ang", "custom_path_offset_ang"),
   ("lane_centering_strength_ang", "lane_centering_strength_ang"),
 )
@@ -440,7 +442,7 @@ class LateralAngleExt:
     kappa_cmd = self.lane_center_trim.update(
       kappa_cmd, self.inputs.model, v_ego, self.enable_lane_positioning_ang,
       self.custom_path_offset_ang, self.lane_centering_strength_ang,
-      CC.latActive, self.lane_change)
+      CC.latActive, self.lane_change, self.enable_lane_full_mode_ang)
 
     # BluePilot: clip kappa_cmd to current_curvature (measured, from yaw rate) +- CURVATURE_ERROR,
     # mirroring lateral_curv_ext.py's apply_ford_curvature_limits_ext exactly (same formula, same

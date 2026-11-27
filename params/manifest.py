@@ -39,6 +39,8 @@ SETTINGS: tuple[Setting, ...] = (
           "Enable lanefull mode for lane positioning."),
   Setting("enable_lane_positioning_ang", bool, False, PER_FRAME, "Enable Lane Positioning",
           "Nudge the vehicle toward true lane-line center (plus optional bias) while in angle-primary control."),
+  Setting("enable_lane_full_mode_ang", bool, True, PER_FRAME, "Enable Lanefull Mode",
+          "Center on the lane lines when they can be trusted. Off: lane positioning applies only the In-Lane Offset to the model's path."),
   Setting("FordPrefLateralControl", int, 0, PER_FRAME, "Primary Control Variable",
           "Curvature matches the existing strategy. Angle uses path_angle as the main actuator (in development).",
           range=(0, 1)),
