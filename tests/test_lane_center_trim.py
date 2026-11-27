@@ -4,10 +4,16 @@
 # minimal fake modelV2-shaped object.
 
 import unittest
+from types import SimpleNamespace
 
 import numpy as np
 
+from ...car.ford.interface import CarInterface
+from ...car.ford.values import CAR
+from ..core.carcontroller_ext import InputTracker, SharedLateralState
 from ..core.lane_center_trim import LaneCenterTrim, _CORRECTION_ROC_PER_TICK
+from ..core.lateral_angle_ext import LateralAngleExt
+from ..params.param_store import ParamStore
 
 
 class _XY:
@@ -65,11 +71,13 @@ class TestLaneCenterTrim(unittest.TestCase):
     self.trim = LaneCenterTrim()
 
   def _run(self, model, kappa_cmd=0.0, enabled=True, offset=0.0, gain=1.0, lat_active=True,
-            lane_change=False, v_ego=None, iterations=1):
+            lane_change=False, v_ego=None, iterations=1, lane_full=None):
+    # lane_full=None leaves the argument out, as every caller before the setting did
+    extra = () if lane_full is None else (lane_full,)
     result = kappa_cmd
     for _ in range(iterations):
       result = self.trim.update(kappa_cmd, model, v_ego if v_ego is not None else self.V_EGO,
-                                 enabled, offset, gain, lat_active, lane_change)
+                                 enabled, offset, gain, lat_active, lane_change, *extra)
     return result
 
   def test_disabled_no_correction(self):
@@ -301,6 +309,84 @@ class TestLaneCenterTrim(unittest.TestCase):
     self.trim.reset()
     self._run(b, offset=0.3, gain=1.0, iterations=500)
     self.assertAlmostEqual(self.trim.correction, correction_a, places=9)
+
+  # --- Lanefull (enable_lane_full_mode_ang): off = the offset alone on the model's path ---
+
+  def _trace(self, model, offset, lane_full=None, iterations=300):
+    """The correction every frame from a fresh trim."""
+    self.trim.reset()
+    out = []
+    for _ in range(iterations):
+      self._run(model, offset=offset, lane_full=lane_full)
+      out.append(self.trim.correction)
+    return out
+
+  def test_lanefull_off_is_the_untrusted_lines_result(self):
+    # Whatever the lane lines say, Lanefull off steers exactly as if they couldn't be trusted (scale 0).
+    off_path = {"clear, 2 m off the model's path": _good_model(lane_center_y=2.0, model_y=0.0),
+                "partly trusted, 2 m off the model's path": _good_model(lane_center_y=2.0, model_y=0.0, probs=(0.9, 0.7, 0.7, 0.9))}
+    lines = {**off_path, "one line": _one_sided_model(), "none": _no_lanelines_model()}
+    for offset in (0.0, 0.3):
+      untrusted = self._trace(_no_lanelines_model(), offset)
+      for name, model in lines.items():
+        with self.subTest(lines=name, offset=offset):
+          self.assertEqual(self._trace(model, offset, lane_full=False), untrusted)
+      for name, model in off_path.items():  # these lines do steer with Lanefull on, so the check above can fail
+        with self.subTest(lines=name, offset=offset, lane_full=True):
+          self.assertNotEqual(self._trace(model, offset), untrusted)
+
+  def test_lanefull_off_zero_offset_no_correction(self):
+    self._run(_good_model(lane_center_y=2.0, model_y=0.0), offset=0.0, lane_full=False, iterations=500)
+    self.assertEqual(self.trim.correction, 0.0)
+
+  def test_lanefull_off_keeps_the_offset(self):
+    # Lanefull off drops the lane lines, not the trim: an offset still steers.
+    self._run(_good_model(lane_center_y=2.0, model_y=0.0), offset=0.3, lane_full=False, iterations=500)
+    self.assertGreater(self.trim.correction, 0.0)
+
+  def test_lanefull_on_or_omitted_is_unchanged(self):
+    for name, model in (("clear", _good_model(lane_center_y=2.0, model_y=0.0)), ("one line", _one_sided_model()),
+                        ("none", _no_lanelines_model())):
+      for offset in (0.0, 0.3):
+        with self.subTest(lines=name, offset=offset):
+          self.assertEqual(self._trace(model, offset, lane_full=True), self._trace(model, offset))
+    # and on still centers on clear lines (pulls right toward the lane center with no offset)
+    self.assertGreater(self._trace(_good_model(lane_center_y=2.0, model_y=0.0), 0.0, lane_full=True)[-1], 0.0)
+
+
+class TestLaneFullSettingReachesTrim(unittest.TestCase):
+  """enable_lane_full_mode_ang as the host publishes it, through LateralAngleExt to the trim."""
+
+  def _correction(self, published):
+    CP = CarInterface.get_non_essential_params(CAR.FORD_F_150_MK14)
+    ext = LateralAngleExt(CP, InputTracker(CP, 0), SharedLateralState())
+    params = {"enable_lane_positioning_ang": b"1", "custom_path_offset_ang": b"0.0", **published}
+    ext.update_angle_params(ParamStore(params.items()))
+    # confident lane lines centered 2 m right of the model's path, no lane change, no model curvature
+    model = _good_model(lane_center_y=2.0, model_y=0.0)
+    model.orientationRate = SimpleNamespace(z=[])
+    model.meta = SimpleNamespace(laneChangeState=0, laneChangeDirection=0)
+    ext.inputs.model = model
+    CS = SimpleNamespace(out=SimpleNamespace(vEgoRaw=20.0, steeringPressed=False, steeringAngleDeg=0.0, yawRate=0.0))
+    for _ in range(100):
+      ext.update_angle_strategy(SimpleNamespace(latActive=True), CS, SimpleNamespace(curvature=0.0))
+    return ext.lane_center_trim.correction
+
+  def test_published_off_reaches_the_trim(self):
+    self.assertEqual(self._correction({"enable_lane_full_mode_ang": b"0"}), 0.0)
+
+  def test_missing_empty_or_unparsable_is_on(self):
+    for published in ({}, {"enable_lane_full_mode_ang": b""}, {"enable_lane_full_mode_ang": b"junk"},
+                      {"enable_lane_full_mode_ang": b"1"}):
+      with self.subTest(published=published):
+        self.assertGreater(self._correction(published), 0.0)
+
+  def test_on_before_the_first_settings_frame(self):
+    CP = CarInterface.get_non_essential_params(CAR.FORD_F_150_MK14)
+    ext = LateralAngleExt(CP, InputTracker(CP, 0), SharedLateralState())
+    self.assertIs(ext.enable_lane_full_mode_ang, True)
+    ext.update_angle_params(None)  # no params this frame: the setting keeps its value
+    self.assertIs(ext.enable_lane_full_mode_ang, True)
 
 
 if __name__ == "__main__":

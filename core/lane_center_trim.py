@@ -88,7 +88,7 @@ class LaneCenterTrim:
     self._correction = 0.0
 
   def update(self, kappa_cmd: float, model, v_ego: float, enabled: bool, offset: float,
-             gain: float, lat_active: bool, lane_change: bool) -> float:
+             gain: float, lat_active: bool, lane_change: bool, lane_full: bool = True) -> float:
     """Returns ``kappa_cmd``, nudged toward (lane-blend target + ``offset``) when active.
 
     ``offset`` (m): positive shifts the target right, negative left (same sign convention as
@@ -96,6 +96,8 @@ class LaneCenterTrim:
     -- see module docstring.
     ``gain`` (0.0-1.0): user-tunable authority -- how much of the (already magnitude-clipped)
     raw correction is actually applied. 0 disables the trim's effect without disabling detection.
+    ``lane_full`` (``enable_lane_full_mode_ang``, default on): off treats the lane lines as untrusted
+    (scale 0 in _laneline_blend), so the target is the model's own path + ``offset`` whatever the lines say.
 
     The applied correction is both exponentially smoothed (_SMOOTH_TAU_S) and rate-limited
     (_CORRECTION_ROC_PER_TICK) -- see the constants above -- so a lane-line-confidence
@@ -114,7 +116,7 @@ class LaneCenterTrim:
       self.reset()
       return kappa_cmd
 
-    valid, raw = self._raw_correction(model, v_ego, offset)
+    valid, raw = self._raw_correction(model, v_ego, offset, lane_full)
     if not valid:
       # Only true failure case now: model.position itself is unusable, so there's no baseline
       # to offset from at all (see _raw_correction). Lane-line-only failures fall back to the
@@ -137,7 +139,7 @@ class LaneCenterTrim:
     """Telemetry: last applied correction (1/m)."""
     return self._correction
 
-  def _raw_correction(self, model, v_ego: float, offset: float) -> tuple[bool, float]:
+  def _raw_correction(self, model, v_ego: float, offset: float, lane_full: bool) -> tuple[bool, float]:
     try:
       pos_x = np.asarray(model.position.x, dtype=float)
       pos_y = np.asarray(model.position.y, dtype=float)
@@ -154,17 +156,19 @@ class LaneCenterTrim:
     # Laneline contribution, blended in by confidence. scale=0 (model-position-only, i.e. just
     # the user's offset bias) whenever lines are missing, low-confidence, or structurally bad --
     # see _laneline_blend for the confidence formula (ported from lateral_curv_ext.py).
-    scale, laneline_center_y = self._laneline_blend(model, lookahead)
+    scale, laneline_center_y = self._laneline_blend(model, lookahead, lane_full)
     target_y = model_y * (1.0 - scale) + laneline_center_y * scale
 
     error = (target_y + offset) - model_y
     raw = 2.0 * error / (lookahead ** 2)
     return True, float(raw)
 
-  def _laneline_blend(self, model, lookahead: float) -> tuple[float, float]:
+  def _laneline_blend(self, model, lookahead: float, lane_full: bool) -> tuple[float, float]:
     """Returns (scale, laneline_center_y). scale=0 whenever lanelines can't be trusted (missing,
-    low-probability, structurally invalid) -- center_y is unused/meaningless in that case since
-    it's weighted out by scale in the caller's blend."""
+    low-probability, structurally invalid) or Lanefull is off -- center_y is unused/meaningless in
+    that case since it's weighted out by scale in the caller's blend."""
+    if not lane_full:
+      return 0.0, 0.0
     try:
       lane_lines = model.laneLines
       probs = model.laneLineProbs

@@ -16,6 +16,7 @@ PARAMS_KEYS_H = [
   '{"enable_lane_positioning_curv", {PERSISTENT | BACKUP, BOOL, "0"}},',
   '{"enable_lane_full_mode_curv", {PERSISTENT | BACKUP, BOOL, "0"}},',
   '{"enable_lane_positioning_ang", {PERSISTENT | BACKUP, BOOL, "0"}},',
+  '{"enable_lane_full_mode_ang", {PERSISTENT | BACKUP, BOOL, "1"}},',
   '{"FordPrefLateralControl", {PERSISTENT | BACKUP, INT, "0"}},',
   '{"custom_profile_curv", {PERSISTENT | BACKUP, INT, "0"}},',
   '{"lane_change_factor_high_curv", {PERSISTENT | BACKUP, FLOAT, "0.85"}},',
@@ -51,7 +52,7 @@ class TestSettingsManifest(unittest.TestCase):
   def test_per_frame_keys_are_what_hosts_publish(self):
     # hosts (bp-sunnypilot's controlsd) publish BP_LATERAL_PARAMS in CarControlSP.params
     self.assertEqual(BP_LATERAL_PARAMS, PER_FRAME_KEYS)
-    self.assertEqual((len(SETTINGS), len(PER_FRAME_KEYS)), (19, 18))
+    self.assertEqual((len(SETTINGS), len(PER_FRAME_KEYS)), (20, 19))
 
   def test_one_read_rule(self):
     """A published, parseable value is used; missing, empty or unparsable gives the default."""
@@ -63,6 +64,9 @@ class TestSettingsManifest(unittest.TestCase):
     self.assertIs(value(_store(enable_human_turn_detection_curv=b"0"), "enable_human_turn_detection_curv"), False)
     self.assertIs(value(_store(), "enable_human_turn_detection_curv"), True)
     self.assertIs(value(_store(enable_human_turn_detection_curv=b""), "enable_human_turn_detection_curv"), True)
+    for raw in (None, b"", b"x"):  # angle-mode Lanefull defaults on: missing, empty or unparsable keeps it on
+      self.assertIs(value(_store() if raw is None else _store(enable_lane_full_mode_ang=raw), "enable_lane_full_mode_ang"), True, raw)
+    self.assertIs(value(_store(enable_lane_full_mode_ang=b"0"), "enable_lane_full_mode_ang"), False)
 
   def test_only_the_angle_factors_are_clamped(self):
     self.assertEqual(value(_store(FordLowSpeedFactor_ang=b"9"), "FordLowSpeedFactor_ang"), 1.5)
